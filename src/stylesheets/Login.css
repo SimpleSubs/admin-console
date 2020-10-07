@@ -1,0 +1,44 @@
+#Login {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+}
+#Login .content-container {
+  justify-content: center;
+  max-width: 750px;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff !important;
+  text-align: center;
+}
+
+.login-form {
+  margin-bottom: 32px;
+  padding: 10px;
+}
+.login-form span {
+  display: none;
+}
+.login-form input[type=email], .login-form input[type=password] {
+  margin: 10px 0;
+}
+.login-form input[type=submit] {
+  color: #fff;
+  justify-content: center;
+  align-items: center;
+  outline: none;
+  font-weight: bold;
+  font-size: 20px;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 7px;
+}
+.login-form .error {
+  margin-top: 10px;
+}
+
+/*# sourceMappingURL=Login.css.map */

@@ -1,0 +1,44 @@
+@use "colors";
+
+#Login {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: colors.$backgroundColor;
+  .content-container {
+    justify-content: center;
+    max-width: 750px;
+    display: flex;
+    flex-direction: column;
+    background-color: colors.$backgroundColor !important;
+    text-align: center;
+  }
+}
+
+.login-form {
+  margin-bottom: 32px;
+  padding: 10px;
+  span {
+    display: none;
+  }
+  input[type=email], input[type=password] {
+    margin: 10px 0;
+  }
+  input[type=submit] {
+    color: colors.$textOnBackground;
+    justify-content: center;
+    align-items: center;
+    outline: none;
+    font-weight: bold;
+    font-size: 20px;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 7px;
+  }
+  .error {
+    margin-top: 10px;
+  }
+}

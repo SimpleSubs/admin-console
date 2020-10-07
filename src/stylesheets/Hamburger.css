@@ -1,0 +1,42 @@
+.hamburger-button {
+  outline: none;
+  border: none;
+  background: none;
+  font-size: 20px;
+  cursor: pointer;
+  top: 0;
+}
+.hamburger-button:hover {
+  opacity: 0.6;
+}
+
+.hamburger-menu {
+  transition: all 0.2s ease;
+  position: absolute;
+  right: 0;
+  top: 0;
+  margin: 0;
+  padding: 5px 0;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 0 5px 0 #0000001f;
+  pointer-events: auto;
+}
+.hamburger-menu button {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 300;
+  white-space: nowrap;
+  background-color: #fff;
+  cursor: pointer;
+}
+.hamburger-menu button:hover {
+  background-color: #f0f0f0;
+}
+.hamburger-menu.closed {
+  transform: scale(0.9);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*# sourceMappingURL=Hamburger.css.map */

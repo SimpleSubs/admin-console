@@ -1,0 +1,108 @@
+@use "colors";
+@use "sass:color";
+@use "Home";
+
+$tableRadius: 5px;
+
+table {
+  border-collapse: collapse;
+  border-radius: $tableRadius;
+  box-shadow: 0 0 10px 3px #0000002f;
+  margin: 10px 0;
+  background-color: colors.$backgroundColor;
+  tbody tr {
+    background-color: colors.$backgroundColor;
+    flex-direction: row;
+    &:nth-child(even) {
+      background-color: colors.$scrollViewBackground;
+    }
+    &:last-child {
+      border-radius: 0 0 $tableRadius $tableRadius;
+    }
+    &.no-data {
+      justify-content: center;
+      text-align: center;
+    }
+    &.invisible {
+      opacity: 0;
+    }
+    &.clickable {
+      cursor: pointer;
+      &:hover:nth-child(even) {
+        background-color: color.adjust(colors.$scrollViewBackground, $lightness: 2%);
+      }
+      &:hover:nth-child(odd) {
+        background-color: color.adjust(colors.$backgroundColor, $lightness: -2%);
+      }
+    }
+  }
+  .selection {
+    margin: 20px;
+    padding: 0;
+  }
+  thead {
+    position: sticky;
+    z-index: 10;
+    top: -(Home.$contentContainerPadding) / 2;
+    background-color: colors.$backgroundColor;
+    border-top-left-radius: $tableRadius;
+    border-top-right-radius: $tableRadius;
+    tr {
+      box-shadow: 0 3px 5px 0 #0000001f;
+      &:first-child {
+        box-shadow: none;
+      }
+      flex-direction: row;
+      th {
+        background-color: colors.$backgroundColor;
+        border-radius: $tableRadius;
+        font-size: 20px;
+        &:first-child {
+          border-top-left-radius: $tableRadius;
+        }
+        &:last-child {
+          border-top-right-radius: $tableRadius
+        }
+        &.table-title {
+          flex: 3;
+          text-align: center;
+        }
+      }
+      .menu-button {
+        margin: 20px;
+        padding: 0;
+        background-color: transparent;
+        flex: 1;
+        position: relative;
+        & > div {
+          position: relative;
+          display: block;
+        }
+        &.left {
+          align-items: start;
+        }
+        &.right {
+          align-items: flex-end;
+          & > div > * {
+            float: right;
+          }
+        }
+      }
+    }
+  }
+  td, th {
+    padding: 20px;
+    border: none;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  td.large {
+    text-align: left;
+    align-items: start;
+  }
+  p {
+    margin: 0;
+    padding: 0;
+  }
+}

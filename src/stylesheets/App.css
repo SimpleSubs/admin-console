@@ -1,0 +1,125 @@
+body * {
+  display: flex;
+  flex-direction: column;
+  font-family: "Josefin Sans", Arial, sans-serif;
+  box-sizing: border-box;
+  color: #000;
+}
+
+script {
+  display: none;
+}
+
+#App {
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+#App > div {
+  flex: 1;
+}
+
+.container {
+  flex: 1;
+}
+
+button {
+  border: none;
+  outline: none;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotateZ(0);
+  }
+  100% {
+    transform: rotateZ(360deg);
+  }
+}
+.loader {
+  transition: all 0.2s ease;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  flex-direction: row;
+  background-color: #151515;
+  color: #fff;
+  padding: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  border-radius: 3px;
+  box-shadow: 0 0 5px 0 #000000ff;
+}
+.loader .fas {
+  color: #fff;
+  margin-left: 15px;
+  animation: spin 1s linear infinite;
+}
+.loader.hidden {
+  transform: scale(0.9);
+  opacity: 0;
+}
+
+.styled-button {
+  border-style: none;
+  font-size: 16px;
+  flex-direction: row;
+  align-items: center;
+  padding: 7px 10px;
+  background-color: #ffd541;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.styled-button:hover {
+  background-color: #ecca54;
+}
+.styled-button .fas {
+  margin-left: 10px;
+}
+
+.error {
+  transition: all 0.2s ease;
+  color: #d72e2e;
+  margin: 0;
+}
+.error.hidden {
+  opacity: 0;
+}
+
+form input:not([type=button]):not([type=submit]):not([type=checkbox]), form select {
+  border: none;
+  padding: 15px;
+  width: 100%;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  font-size: 16px;
+}
+form input:not([type=button]):not([type=submit]):not([type=checkbox])::placeholder, form select::placeholder {
+  color: #b6b6b6;
+}
+form .picker {
+  position: relative;
+}
+form .picker select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  position: relative;
+}
+form .picker .caret {
+  pointer-events: none;
+  display: block;
+  position: absolute;
+  cursor: pointer;
+  right: 1rem;
+  top: 50%;
+  margin-top: -1px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid #000;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+}
+
+/*# sourceMappingURL=App.css.map */

@@ -1,0 +1,22 @@
+@use "sass:color";
+
+$accentColor: #ffd541;
+$darkAccentColor: color.adjust($accentColor, $saturation: -20%);
+$backgroundColor: #fff;
+$textInputColor: #f0f0f0;
+$primaryText: #000;
+$secondaryText: #a4a4a4;
+$textOnBackground: #fff;
+$scrollViewBackground: #f0f0f0;
+$uncheckedCheckbox: #cbcbcb;
+$checkboxText: #6e6e6e;
+$textInputText: #b6b6b6;
+$linkText: #466cff;
+$infoModal: #333;
+$errorText: #d72e2e;
+$pickerIOS: #ddd;
+$okAction: #33ac33;
+$loadingIndicator: #999999;
+$borderColor: #0000000f;
+$cardColor: #fafafa;
+$loaderBackground: #151515;

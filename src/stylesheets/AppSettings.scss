@@ -1,0 +1,43 @@
+@use "colors";
+@use "Table";
+
+.cutoffTime {
+  border-collapse: collapse;
+  border-radius: Table.$tableRadius;
+  box-shadow: 0 0 10px 3px #0000002f;
+  margin: 10px 0;
+  background-color: colors.$backgroundColor;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: start;
+  padding: 30px 30px 10px 30px;
+  & > p {
+    flex: 1;
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .form-wrapper {
+    form {
+      flex-direction: row;
+      align-items: stretch;
+      & > * {
+        margin: 0 5px;
+      }
+      label > span {
+        display: none;
+      }
+      p {
+        justify-content: center;
+        font-weight: bold;
+        font-size: 24px;
+      }
+      select {
+        padding-right: 40px;
+      }
+    }
+    .error {
+      margin-top: 10px;
+      text-align: right;
+    }
+  }
+}
