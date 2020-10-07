@@ -3,35 +3,84 @@ import { Switch, Route, Redirect } from "react-router-dom";
 import { connect } from "react-redux";
 import Login from "../screens/Login";
 import Home from "../screens/Home";
+import Loading from "../screens/Loading";
 import { authListener } from "../redux/Actions";
 
-const Navigator = ({ authenticated, authListener }) => {
+const ProtectedRoute = ({ isLoggedIn, hasAuthenticated, thisRoute, location }) => {
+  let target = isLoggedIn ?
+    "/authenticated" :
+    hasAuthenticated ? "/login" : "/";
+  switch (target) {
+    case "/authenticated":
+      return (
+        target === thisRoute ?
+          <Home /> :
+          <Redirect to={{ pathname: "/authenticated", state: { from: location }}} />
+      );
+    case "/login":
+      return (
+        target === thisRoute ?
+          <Login /> :
+          <Redirect to={{ pathname: "/login", state: { from: location }}} />
+      );
+    default:
+      return (
+        target === thisRoute ?
+          <Loading /> :
+          <Redirect to={{ pathname: "/", state: { from: location }}} />
+      );
+  }
+}
+
+const Navigator = ({ isLoggedIn, hasAuthenticated, authListener }) => {
   React.useEffect(authListener, []);
   return (
     <Switch>
       <Route
         path={"/"}
         exact
-        render={({location}) => <Redirect to={{pathname: "/login", state: {from: location}}}/>}
+        render={({ location }) => (
+          <ProtectedRoute
+            isLoggedIn={isLoggedIn}
+            hasAuthenticated={hasAuthenticated}
+            thisRoute={"/"}
+            location={location}
+          />
+        )}
       />
-      <Route path={"/admin"} render={({location}) => (
-        authenticated
-          ? <Home/>
-          : <Redirect to={{pathname: "/login", state: {from: location}}}/>
-      )}/>
-      <Route path={"/login"} render={({location}) => (
-        authenticated
-          ? <Redirect to={{pathname: "/admin", state: {from: location}}}/>
-          : <Login/>
-      )}/>
+      <Route
+        path={"/authenticated"}
+        render={({ location }) => (
+          <ProtectedRoute
+            isLoggedIn={isLoggedIn}
+            hasAuthenticated={hasAuthenticated}
+            thisRoute={"/authenticated"}
+            location={location}
+          />
+        )}
+      />
+      <Route
+        path={"/login"}
+        render={({ location }) => (
+          <ProtectedRoute
+            isLoggedIn={isLoggedIn}
+            hasAuthenticated={hasAuthenticated}
+            thisRoute={"/login"}
+            location={location}
+          />
+        )}
+      />
     </Switch>
-  )
+  );
 };
 
-const mapStateToProps = ({ user }) => ({ authenticated: !!user });
+const mapStateToProps = ({ user, hasAuthenticated }) => ({
+  isLoggedIn: !!user,
+  hasAuthenticated
+});
 
 const mapDispatchToProps = (dispatch) => ({
   authListener: () => authListener(dispatch)
-})
+});
 
 export default connect(mapStateToProps, mapDispatchToProps)(Navigator);

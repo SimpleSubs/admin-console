@@ -3,9 +3,15 @@ import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
 import { deleteUsers } from "../redux/Actions";
+import Loading from "./Loading";
 
 const Users = ({ navbarHeight, users, userFields, uid, deleteUsers, emailUsers }) => {
-  const userData = React.useMemo(() => Object.keys(users).map((uid) => ({...users[uid], uid})), [users]);
+  const userData = React.useMemo(
+    () => (users && userFields) ? Object.keys(users).map((uid) => ({ ...users[uid], uid })) : null,
+    [userFields, users]);
+  if (!userData) {
+    return <Loading />
+  }
   const deleteSelected = (selected) => {
     deleteUsers(Object.keys(selected).map((index) => userData[index].uid), uid);
   };
@@ -30,10 +36,10 @@ const Users = ({ navbarHeight, users, userFields, uid, deleteUsers, emailUsers }
 
 const mapStateToProps = ({ users, appSettings, user }) => ({
   users,
-  userFields: [
+  userFields: appSettings ? [
     { key: "email", title: "Email" },
     ...(appSettings.userFields)
-  ],
+  ] : null,
   uid: user ? user.uid : null
 })
 

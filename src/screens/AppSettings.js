@@ -7,6 +7,7 @@ import StyledButton from "../components/StyledButton";
 import { setCutoffTime, setUserFields, setOrderOptions } from "../redux/Actions";
 import Picker from "../components/Picker";
 import "../stylesheets/AppSettings.css";
+import Loading from "./Loading";
 
 function toStateFormat(cutoffTime) {
   if (!cutoffTime || cutoffTime === {}) {
@@ -185,11 +186,13 @@ const UserFieldsTable = ({ appSettings, setUserFields }) => {
 };
 
 const AppSettings = ({ navbarHeight, appSettings, setCutoffTime, setOrderOptions, setUserFields }) => (
-  <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
-    <CutoffTime appSettings={appSettings} setCutoffTime={setCutoffTime} />
-    <OrderOptionsTable appSettings={appSettings} setOrderOptions={setOrderOptions} />
-    <UserFieldsTable appSettings={appSettings} setUserFields={setUserFields} />
-  </div>
+  !appSettings ?
+    <Loading /> :
+    <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
+      <CutoffTime appSettings={appSettings} setCutoffTime={setCutoffTime} />
+      <OrderOptionsTable appSettings={appSettings} setOrderOptions={setOrderOptions} />
+      <UserFieldsTable appSettings={appSettings} setUserFields={setUserFields} />
+    </div>
 );
 
 const mapStateToProps = ({ appSettings }) => ({ appSettings });

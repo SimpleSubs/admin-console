@@ -66,7 +66,6 @@ export function logIn(email, password, dispatch, setError) {
   dispatch(setLoading(true));
   executeFunction("checkIsAdmin", { email }).then((isAdmin) => {
     if (!isAdmin) {
-      console.log(isAdmin);
       dispatch(setLoading(false));
       setError("permission-denied");
       return;

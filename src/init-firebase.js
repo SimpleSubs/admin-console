@@ -1,7 +1,7 @@
-const firebase = require("firebase");
+const firebase = require("firebase/app");
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBIV-fwIGwS9sNbGxHH_kCTbx_BbpAJC2s",
+  apiKey: "AIzaSyCjnmkb4LyI1gaEQCk8sAXzfjOt-NedfBY",
   authDomain: "sandwich-orders.firebaseapp.com",
   databaseURL: "https://sandwich-orders.firebaseio.com",
   projectId: "sandwich-orders",
@@ -10,3 +10,6 @@ const firebaseConfig = {
   appId: "1:940239502337:web:5de6bf8f976d3fb1f65400"
 };
 
+const initializeApp = () => firebase.initializeApp(firebaseConfig);
+
+export default initializeApp;

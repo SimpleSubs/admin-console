@@ -1,19 +1,13 @@
 import Actions from "./Actions";
 import {combineReducers} from "redux";
 
-const DEFAULT_APP_SETTINGS = {
-  cutoffTime: {},
-  orderOptions: [],
-  userFields: []
-}
-
-const orders = (state = [], action) => (
+const orders = (state = null, action) => (
   action.type === Actions.UPDATE_ORDERS ?
     action.orders :
     state
 );
 
-const users = (state = {}, action) => {
+const users = (state = null, action) => {
   switch (action.type) {
     case Actions.UPDATE_USERS:
       return {
@@ -31,7 +25,7 @@ const users = (state = {}, action) => {
   }
 };
 
-const appSettings = (state = DEFAULT_APP_SETTINGS, action) => (
+const appSettings = (state = null, action) => (
   action.type === Actions.UPDATE_APP_SETTINGS ?
     action.appSettings :
     state
@@ -49,12 +43,15 @@ const loading = (state = false, action) => (
     state
 );
 
+const hasAuthenticated = (state = false, action) => action.type === Actions.SET_USER ? true : state;
+
 const consoleApp = combineReducers({
   orders,
   users,
   appSettings,
   user,
-  loading
+  loading,
+  hasAuthenticated
 })
 
 export default consoleApp;

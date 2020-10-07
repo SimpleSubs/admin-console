@@ -6,6 +6,7 @@ import Table from "../components/Table";
 import { OrderColumns } from "../constants/TableConstants";
 import OrderOptionConstants from "../constants/OrderOptions";
 import moment from "moment";
+import Loading from "./Loading";
 import { connect } from "react-redux";
 
 function tableValues(order, users, orderOptions) {
@@ -69,9 +70,12 @@ function downloadOrders(selected, orders, users, orderOptions) {
 
 const Orders = ({ navbarHeight, orders, orderOptions, users }) => {
   const data = React.useMemo(
-    () => orders.map((order) => tableValues(order, users, orderOptions)).filter((order) => !!order),
+    () => (orders && users && orderOptions) ? orders.map((order) => tableValues(order, users, orderOptions)).filter((order) => !!order) : null,
     [orderOptions, orders, users]
   );
+  if (!data) {
+    return <Loading />
+  }
   const MenuButtons = {
     Right: ({ selected }) => (
       <StyledButton
@@ -91,10 +95,10 @@ const Orders = ({ navbarHeight, orders, orderOptions, users }) => {
 
 const mapStateToProps = ({ orders, appSettings, users }) => ({
   orders,
-  orderOptions: [
+  orderOptions: appSettings ? [
     ...OrderOptionConstants,
     ...appSettings.orderOptions
-  ],
+  ] : null,
   users
 });
 
