@@ -38,26 +38,31 @@ function joinIngredients({ user, date, uid, ...ingredients }, orderOptions) {
   });
 }
 
-function downloadOrders(selected, orders, users, orderOptions) {
+function getTableValue(data, key) {
+  if (!data[key]) {
+    return "";
+  } else if (typeof data[key] === "string") {
+    return data[key];
+  } else {
+    return '"' + data[key].join(", ") + '"';
+  }
+}
+
+function downloadOrders(selected, orders, users, orderOptions, userFields) {
+  const orderOptionsWithoutUser = orderOptions.filter(({ key }) => key !== "user");
+  const userTitles = userFields.map(({ title }) => title);
+  const orderTitles = orderOptionsWithoutUser.map(({ title }) => title);
   let indexesToDownload = Object.keys(selected).map((i) => parseInt(i));
   if (indexesToDownload.length === 0) {
     for (let i = 0; i < orders.length; i++) {
       indexesToDownload.push(i);
     }
   }
-  let rows = [orderOptions.map(({ title }) => title)];
+  let rows = [[...userTitles, ...orderTitles]];
   for (let i of indexesToDownload) {
-    rows.push(orderOptions.map(({ key }) => {
-      if (key === "user") {
-        return users[orders[i].uid].name || users[orders[i].uid].email;
-      }
-      if (!orders[i][key]) {
-        return "";
-      } else if (typeof orders[i][key] === "string") {
-        return orders[i][key];
-      }
-      return orders[i][key].join(", ");
-    }));
+    let userData = userFields.map(({ key }) => getTableValue(users[orders[i].uid], key));
+    let orderData = orderOptionsWithoutUser.map(({ key }) => getTableValue(orders[i], key));
+    rows.push([...userData, ...orderData]);
   }
   let csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
   let encodedUri = encodeURI(csvContent);
@@ -68,7 +73,7 @@ function downloadOrders(selected, orders, users, orderOptions) {
   link.click();
 }
 
-const Orders = ({ navbarHeight, orders, orderOptions, users }) => {
+const Orders = ({ navbarHeight, orders, orderOptions, users, userFields }) => {
   const data = React.useMemo(
     () => (orders && users && orderOptions) ? orders.map((order) => tableValues(order, users, orderOptions)).filter((order) => !!order) : null,
     [orderOptions, orders, users]
@@ -81,7 +86,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users }) => {
       <StyledButton
         title={"Download " + (Object.keys(selected).length === 0 ? "All" : "Selected")}
         icon={"fa-file-download"}
-        onClick={() => downloadOrders(selected, orders, users, orderOptions)}
+        onClick={() => downloadOrders(selected, orders, users, orderOptions, userFields)}
       />
     )
   }
@@ -99,7 +104,8 @@ const mapStateToProps = ({ orders, appSettings, users }) => ({
     ...OrderOptionConstants,
     ...appSettings.orderOptions
   ] : null,
-  users
+  users,
+  userFields: appSettings?.userFields
 });
 
 export default connect(mapStateToProps, null)(Orders);
