@@ -36,7 +36,7 @@ export const OrderOptionColumns = [
 
 export const UserFieldColumns = [
   { key: "title", title: "Title", type: TableTypes.TEXT, required: () => true },
-  { key: "inputType", title: "Input Type", type: TableTypes.PICKER, options: Object.keys(InputTypes), displayValue: (value) => InputTypes[value], required: () => true },
+  { key: "inputType", title: "Input Type", type: TableTypes.PICKER, options: ["TEXT_INPUT", "PICKER"], displayValue: (value) => InputTypes[value], required: () => true },
   { key: "textType", title: "Text Type", type: TableTypes.CONDITIONAL, condition: getTextTypeType, options: Object.keys(TextTypes), displayValue: (value) => TextTypes[value], required: () => true },
   { key: "options", title: "Options", type: TableTypes.CONDITIONAL, condition: getOptionsType, required: () => true },
   { key: "placeholder", title: "Placeholder", type: TableTypes.CONDITIONAL, condition: getPlaceholderType, required: ({ inputType }) => inputType === "TEXT_INPUT" },

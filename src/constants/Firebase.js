@@ -2,9 +2,11 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import "firebase/auth";
 import "firebase/functions";
-import initializeApp from "../init-firebase";
+import "firebase/analytics";
+import firebaseConfig from "../firebase-config.json";
 
-initializeApp();
+firebase.initializeApp(firebaseConfig);
+firebase.analytics();
 
 export const executeFunction = async (name, data) => {
   let authorization = firebase.auth().currentUser ?
