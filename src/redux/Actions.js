@@ -141,7 +141,10 @@ export function orderListener(dispatch, isLoggedIn) {
       let orders = [];
       querySnapshot.forEach((doc) => {
         let data = doc.data();
-        if (parseISO(data.date) > moment()) {
+        let now = moment();
+        let momentDate = parseISO(data.date);
+        // Filter out all orders before today
+        if (momentDate.isAfter(now, "day") || momentDate.isSame(now, "day")) {
           orders.push(doc.data());
         }
       });

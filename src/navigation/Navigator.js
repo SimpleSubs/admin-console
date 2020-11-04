@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import Login from "../screens/Login";
 import Home from "../screens/Home";
 import Loading from "../screens/Loading";
+import PageNotFound from "../screens/PageNotFound";
 import { authListener } from "../redux/Actions";
 
 const ProtectedRoute = ({ isLoggedIn, hasAuthenticated, thisRoute, location }) => {
@@ -70,6 +71,7 @@ const Navigator = ({ isLoggedIn, hasAuthenticated, authListener }) => {
           />
         )}
       />
+      <Route component={PageNotFound} />
     </Switch>
   );
 };

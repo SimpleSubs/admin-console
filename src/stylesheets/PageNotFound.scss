@@ -1,0 +1,48 @@
+@use "colors";
+
+.page-not-found {
+  align-items: center;
+  justify-content: flex-start;
+  overflow: auto;
+  padding: 60px;
+  div {
+    max-width: 750px;
+    padding: 30px;
+    text-align: center;
+    align-items: center;
+    h1 {
+      font-size: 200px;
+      margin: 0;
+    }
+    h2 {
+      font-size: 64px;
+      margin: 0;
+      font-weight: lighter;
+    }
+    p {
+      font-weight: lighter;
+      font-size: 20px;
+    }
+  }
+  img {
+    object-fit: contain;
+  }
+  a {
+    transition: all 0.2s ease;
+    text-decoration: none;
+    background-color: colors.$accentColor;
+    padding: 20px;
+    flex-direction: row;
+    font-size: 18px;
+    i {
+      transition: all 0.2s ease;
+      margin-right: 10px;
+    }
+    &:hover {
+      background-color: colors.$darkAccentColor;
+      i {
+        transform: translateX(-5px);
+      }
+    }
+  }
+}
