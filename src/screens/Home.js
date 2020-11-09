@@ -13,7 +13,7 @@ const PAGES = [
   { title: "App Settings", link: "app-settings" }
 ]
 
-const Home = ({ logOut, userDataListener, uid, orderListener, usersListener, appSettingsListener, isLoggedIn }) => {
+const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, isLoggedIn }) => {
   const [navbarHeight, setHeight] = React.useState(0);
   const [pageIndex, setPageIndex] = React.useState(0);
   const { path, url } = useRouteMatch();
@@ -29,10 +29,10 @@ const Home = ({ logOut, userDataListener, uid, orderListener, usersListener, app
     let index = PAGES.findIndex(({ link }) => link === currentPage);
     setPageIndex(index);
   }, [location]);
-  React.useEffect(() => userDataListener(uid), [uid, userDataListener]);
-  React.useEffect(() => orderListener(isLoggedIn), [isLoggedIn, orderListener]);
-  React.useEffect(() => usersListener(isLoggedIn), [isLoggedIn, usersListener]);
-  React.useEffect(() => appSettingsListener(isLoggedIn), [isLoggedIn, appSettingsListener]);
+  React.useEffect(userDataListener, []);
+  React.useEffect(() => orderListener(isLoggedIn), [isLoggedIn]);
+  React.useEffect(() => usersListener(isLoggedIn), [isLoggedIn]);
+  React.useEffect(() => appSettingsListener(isLoggedIn), [isLoggedIn]);
 
   return (
     <>
@@ -76,7 +76,6 @@ const Home = ({ logOut, userDataListener, uid, orderListener, usersListener, app
 };
 
 const mapStateToProps = ({ user }) => ({
-  uid: user ? user.uid : null,
   isLoggedIn: !!user
 });
 

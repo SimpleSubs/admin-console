@@ -4,4 +4,10 @@ const InputTypes = {
   CHECKBOX: "checkbox"
 }
 
+export const AdminTypes = {
+  USER: "user",
+  ADMIN: "admin",
+  OWNER: "owner"
+}
+
 export default InputTypes;

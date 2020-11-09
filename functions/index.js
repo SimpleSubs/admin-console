@@ -12,7 +12,7 @@ const isAdmin = async (uid) => {
     .collection("userData")
     .doc(uid).get()
     .catch(throwError);
-  if (!doc.exists || !doc.data().admin) {
+  if (!doc.exists || !(doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN")) {
     throw new functions.https.HttpsError("permission-denied", "User is not an admin");
   }
 }
@@ -35,7 +35,7 @@ exports.checkIsAdmin = functions.https.onCall( async (data, context) => {
     .collection("userData")
     .doc(uid).get()
     .catch(throwError);
-  return doc.exists && doc.data().admin;
+  return doc.exists && (doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN");
 });
 
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
@@ -77,4 +77,24 @@ exports.getUsers = functions.https.onCall(async (data, context) => {
     users,
     notFound
   };
+});
+
+exports.setEmail = functions.https.onCall(async (data, context) => {
+  await checkAuth(context.auth);
+  let uid = data.uid;
+  await admin.auth().updateUser(uid, { email: data.email }).catch(throwError);
+});
+
+exports.resetPasswords = functions.https.onCall(async (data, context) => {
+  await checkAuth(context.auth);
+  let uids = data.uids;
+  let doc = await admin.firestore().collection("appData").doc("defaultUser").get().catch(throwError);
+  let password = doc.data().password;
+  try {
+    await Promise.all(uids.map((uid) => admin.auth().updateUser(uid, { password })));
+    console.log("Successfully reset " + uids.length + " passwords to '" + password + "'.");
+    return password;
+  } catch (e) {
+    throwError(e);
+  }
 });

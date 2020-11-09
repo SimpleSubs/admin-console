@@ -129,7 +129,7 @@ const OrderOptionsTable = ({ appSettings, setOrderOptions }) => {
   return (
     <Table
       id={"order-options-table"}
-      editable
+      custom
       data={appSettings.orderOptions}
       columns={OrderOptionColumns}
       title={"Order Fields"}
@@ -174,7 +174,7 @@ const UserFieldsTable = ({ appSettings, setUserFields }) => {
   return (
     <Table
       id={"user-fields-table"}
-      editable
+      custom
       data={appSettings.userFields}
       columns={UserFieldColumns}
       title={"User Fields"}

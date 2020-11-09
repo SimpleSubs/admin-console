@@ -1,5 +1,5 @@
 import React from "react";
-import { useTable, useRowSelect, useFlexLayout } from "react-table";
+import { useTable, useRowSelect, useFlexLayout, useSortBy, useGlobalFilter, useAsyncDebounce } from "react-table";
 import { useDrag, useDrop } from "react-dnd";
 import update from "immutability-helper";
 import Checkbox, { IndeterminateCheckbox } from "./Checkbox";
@@ -9,7 +9,7 @@ import "../stylesheets/Table.css";
 import EditRowForm from "./EditRowForm";
 
 const CellGenerator = ({ type = TableTypes.TEXT, value }) => (
-  type === TableTypes.CHECKBOX ?
+  type === TableTypes.BOOLEAN ?
     <Checkbox checked={value} disabled /> :
     <p>{value}</p>
 );
@@ -22,12 +22,13 @@ function generateColumn(column) {
   }
 }
 
-function prepHeaders({ key, title, type = TableTypes.TEXT, size = "MEDIUM" }) {
+function prepHeaders({ key, title, type = TableTypes.TEXT, size = "MEDIUM", sortType = "alphanumeric" }) {
   return {
     Header: title,
     accessor: key,
     type,
-    size
+    size,
+    sortType
   }
 }
 
@@ -65,7 +66,7 @@ function prepData(row, columns) {
   return displayRow;
 }
 
-const Row = ({ row, index, moveRow, editable, focusRow, tableId, dragOverIndex, setDragOverIndex, onReorder }) => {
+const Row = ({ row, index, moveRow, custom, focusRow, tableId, dragOverIndex, setDragOverIndex, onReorder }) => {
   const dropRef = React.useRef(null);
 
   const [, drop] = useDrop({
@@ -100,7 +101,7 @@ const Row = ({ row, index, moveRow, editable, focusRow, tableId, dragOverIndex, 
   const [, drag, preview] = useDrag({
     item: { type: tableId + "-row", prevIndex: index, index },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    canDrag: editable,
+    canDrag: custom,
     end: (item, monitor) => {
       if (!item) return;
       setDragOverIndex(-1);
@@ -112,7 +113,11 @@ const Row = ({ row, index, moveRow, editable, focusRow, tableId, dragOverIndex, 
   drag(dropRef);
 
   return (
-    <tr ref={dropRef} className={(editable ? "clickable" : "") + (dragOverIndex === index ? " invisible" : "")} onClick={() => focusRow(index)} {...row.getRowProps()}>
+    <tr
+      ref={dropRef}
+      className={"clickable" + (dragOverIndex === index ? " invisible" : "")}
+      onClick={() => focusRow(index)} {...row.getRowProps()}
+    >
       {row.cells.map((cell) => (
         <td
           className={cell.column.id + " " + (cell.column.size ? cell.column.size.toLowerCase() : "")}
@@ -125,9 +130,29 @@ const Row = ({ row, index, moveRow, editable, focusRow, tableId, dragOverIndex, 
   );
 }
 
-const Table = ({ columns, data, MenuButtons = {}, title, editable = false, onEdit = () => {}, id = "", pushState = () => {} }) => {
-  const preppedColumns = React.useMemo(() => columns.map(prepHeaders), [columns]);
-  const preppedData = React.useMemo(() => data.map((row) => prepData(row, columns)), [data, columns]);
+const SearchBar = ({ globalFilter, setGlobalFilter }) => {
+  const [value, setValue] = React.useState(globalFilter);
+  const onChange = useAsyncDebounce((value) => setGlobalFilter(value || undefined), 200);
+
+  return (
+    <div className={"search-bar"}>
+      <i className={"fas fa-search"} />
+      <input
+        type={"text"}
+        placeholder={"Search..."}
+        onChange={(e) => {
+          setValue(e.target.value);
+          onChange(e.target.value);
+        }}
+        value={value || ""}
+      />
+    </div>
+  );
+}
+
+const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = false, onEdit = () => {}, id = "", pushState = () => {}, getDataValues = (data) => data, getColumnValues = (columns) => columns, extraFields = [], extraParams, defaultSortCol }) => {
+  const preppedColumns = React.useMemo(() => getColumnValues(columns).map(prepHeaders), [columns]);
+  const preppedData = React.useMemo(() => getDataValues(data).map((row) => prepData(row, getColumnValues(columns))), [data, columns]);
   const [modalOpen, toggleModal] = React.useState(false);
   const [focusedRow, setFocusedRow] = React.useState(null);
   const [records, setRecords] = React.useState(preppedData);
@@ -139,13 +164,19 @@ const Table = ({ columns, data, MenuButtons = {}, title, editable = false, onEdi
     headerGroups,
     rows,
     prepareRow,
-    state: { selectedRowIds }
+    setGlobalFilter,
+    state: { selectedRowIds, globalFilter }
   } = useTable(
     {
       columns: preppedColumns,
       data: records,
-      defaultColumn: ColumnSizes.MEDIUM
+      defaultColumn: ColumnSizes.MEDIUM,
+      autoResetGlobalFilter: false,
+      disableSortRemove: true,
+      initialState: { sortBy: [{ id: defaultSortCol, desc: false }]}
     },
+    useGlobalFilter,
+    useSortBy,
     useRowSelect,
     useFlexLayout,
     (hooks) => {
@@ -196,24 +227,31 @@ const Table = ({ columns, data, MenuButtons = {}, title, editable = false, onEdi
 
   return (
     <>
-      {editable &&
-        <EditRowForm
-          fields={columns}
-          id={id}
-          prevData={focusedRow !== null ? data[focusedRow] : {}}
-          open={modalOpen}
-          onSubmit={(editedField) => onEdit(focusedRow, editedField)}
-          closeModal={() => toggleModal(false)}
-          unfocusRow={() => setFocusedRow(null)}
-        />
-      }
+      <EditRowForm
+        fields={[...columns, ...extraFields]}
+        id={id}
+        prevData={focusedRow !== null ? data[focusedRow] : {}}
+        open={modalOpen}
+        onSubmit={(editedField) => onEdit(focusedRow, editedField)}
+        closeModal={() => toggleModal(false)}
+        unfocusRow={() => setFocusedRow(null)}
+        custom={custom}
+        extraParams={extraParams}
+      />
       <table {...getTableProps()}>
         <thead>
           <tr>
             <th className={"menu-button left"}>
-              <div>
-                {MenuButtons.Left && <MenuButtons.Left selected={selectedRowIds} openModal={() => toggleModal(true)} />}
-              </div>
+              {!custom ? (
+                <SearchBar
+                  globalFilter={globalFilter}
+                  setGlobalFilter={setGlobalFilter}
+                />
+              ) : (
+                <div>
+                  {MenuButtons.Left && <MenuButtons.Left selected={selectedRowIds} openModal={() => toggleModal(true)} />}
+                </div>
+              )}
             </th>
             <th className={"table-title"}>{title}</th>
             <th className={"menu-button right"}>
@@ -225,8 +263,21 @@ const Table = ({ columns, data, MenuButtons = {}, title, editable = false, onEdi
           {headerGroups.map((headerGroup) => (
             <tr {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map((column) => (
-                <th className={column.id} {...column.getHeaderProps()}>
+                <th
+                  className={`${column.id} ${column.isSorted && "space"}`}
+                  {...column.getHeaderProps(!custom && column.getSortByToggleProps())}
+                >
+                  {column.isSorted && (
+                    <span className={"sort-arrow-placeholder"}>
+                      <i className={"fas fa-arrow-up"} />
+                    </span>
+                  )}
                   {column.render("Header")}
+                  {column.isSorted && (
+                    <span className={"sort-arrow " + (column.isSortedDesc ? "down" : "")}>
+                      <i className="fas fa-arrow-up" />
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -243,9 +294,9 @@ const Table = ({ columns, data, MenuButtons = {}, title, editable = false, onEdi
                 <Row
                   key={index}
                   data={records}
-                  editable={editable}
+                  custom={custom}
                   focusRow={focusRow}
-                  index={index}
+                  index={row.id}
                   row={row}
                   moveRow={moveRow}
                   tableId={id}

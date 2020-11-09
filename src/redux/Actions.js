@@ -101,6 +101,52 @@ export function deleteUsers(uidsToDelete, myUid, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
+export function updateOrder(id, order, dispatch) {
+  dispatch(setLoading(true));
+  firestore.collection("allOrders").doc(id)
+    .set(order)
+    .then(() => {
+      console.log("Successfully updated order");
+      dispatch(setLoading(false));
+    }).catch((error) => console.error(error));
+}
+
+export function deleteOrders(orders, dispatch) {
+  dispatch(setLoading(true));
+  const allOrders = firestore.collection("allOrders");
+  Promise.all(orders.map((order) => allOrders.doc(order).delete()))
+    .then(() => {
+      console.log("Successfully deleted " + orders.length + " orders");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export async function updateUser(uid, userData, prevUserData, dispatch) {
+  dispatch(setLoading(true));
+  if (userData.email !== prevUserData.email) {
+    try {
+      await executeFunction("setEmail", { email: userData.email, uid });
+    } catch (e) {
+      reportError(e, dispatch);
+    }
+  }
+  try {
+    await firestore.collection("userData").doc(uid).set(userData);
+    console.log("Successfully updated user data.");
+    dispatch(setLoading(false));
+  } catch (e) {
+    reportError(e, dispatch);
+  }
+}
+
+export function resetPasswords(uids, dispatch) {
+  dispatch(setLoading(true));
+  executeFunction("resetPasswords", { uids }).then((password) => {
+    console.log("Successfully reset passwords to '" + password + "'.");
+    dispatch(setLoading(false));
+  }).catch((error) => reportError(error, dispatch));
+}
+
 export function setCutoffTime(time, appSettings, dispatch) {
   dispatch(setLoading(true));
   APP_SETTINGS_COLLECTION.set({
@@ -143,11 +189,14 @@ export function orderListener(dispatch, isLoggedIn) {
         let data = doc.data();
         // Filter out all orders before today
         if (!parseISO(data.date).isBefore(moment(), "day")) {
-          orders.push(doc.data());
+          orders.push({
+            ...doc.data(),
+            key: doc.id
+          });
         }
       });
       dispatch(updateOrders(orders));
-    })
+    });
 }
 
 export function usersListener(dispatch, isLoggedIn) {
@@ -171,7 +220,8 @@ export function usersListener(dispatch, isLoggedIn) {
           for (let uid of Object.keys(result.users)) {
             users[uid] = {
               email: result.users[uid],
-              ...added[uid]
+              ...added[uid],
+              key: uid
             }
           }
           dispatch(updateUsers(users));
@@ -197,7 +247,8 @@ export function authListener(dispatch) {
   });
 }
 
-export function userDataListener(dispatch, uid) {
+export function userDataListener(dispatch) {
+  const uid = auth.currentUser?.uid;
   if (!uid) return;
   return firestore.collection("userData").doc(uid)
     .onSnapshot((doc) => {

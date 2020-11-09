@@ -97,6 +97,12 @@ form input:not([type=button]):not([type=submit]):not([type=checkbox]), form sele
 form input:not([type=button]):not([type=submit]):not([type=checkbox])::placeholder, form select::placeholder {
   color: #b6b6b6;
 }
+form input:not([type=button]):not([type=submit]):not([type=checkbox])[disabled], form select[disabled] {
+  background-color: transparent;
+}
+form input[type=date] {
+  flex-direction: row;
+}
 form .picker {
   position: relative;
 }
