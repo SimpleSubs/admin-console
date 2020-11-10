@@ -30,8 +30,11 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
     setPageIndex(index);
   }, [location]);
   React.useEffect(userDataListener, []);
+  // eslint-disable-next-line
   React.useEffect(() => orderListener(isLoggedIn), [isLoggedIn]);
+  // eslint-disable-next-line
   React.useEffect(() => usersListener(isLoggedIn), [isLoggedIn]);
+  // eslint-disable-next-line
   React.useEffect(() => appSettingsListener(isLoggedIn), [isLoggedIn]);
 
   return (

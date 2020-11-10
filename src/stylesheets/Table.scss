@@ -70,8 +70,10 @@ table {
           text-align: center;
         }
         .sort-arrow {
-          &.down i {
+          i {
             transition: all 0.2s ease;
+          }
+          &.down i {
             transform: rotate(180deg);
           }
         }
@@ -125,6 +127,43 @@ table {
           &::placeholder {
             color: colors.$textInputText;
           }
+        }
+      }
+    }
+  }
+  tfoot {
+    position: sticky;
+    bottom: -10px;
+    background-color: colors.$backgroundColor;
+    border-radius: 0 0 5px 5px;
+    box-shadow: 0 -3px 5px 0 #0000001f;
+    .page-buttons {
+      flex-direction: row;
+      justify-content: flex-end;
+      font-size: 16px;
+      button {
+        flex-direction: row;
+        padding: 10px;
+        margin: 0 2px;
+        cursor: pointer;
+        background-color: colors.$textInputColor;
+        &:hover {
+          background-color: color.adjust(colors.$textInputColor, $lightness: -10%);
+        }
+        &:disabled, &[disabled] {
+          cursor: default;
+          background-color: transparent;
+          i {
+            color: colors.$secondaryText
+          }
+        }
+      }
+      label {
+        flex-direction: row;
+        padding: 5px 10px;
+        align-items: center;
+        input {
+          padding: 10px;
         }
       }
     }

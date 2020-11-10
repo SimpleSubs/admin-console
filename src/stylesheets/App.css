@@ -58,6 +58,7 @@ button {
 .loader.hidden {
   transform: scale(0.9);
   opacity: 0;
+  pointer-events: none;
 }
 
 .styled-button {

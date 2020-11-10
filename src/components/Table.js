@@ -1,5 +1,5 @@
 import React from "react";
-import { useTable, useRowSelect, useFlexLayout, useSortBy, useGlobalFilter, useAsyncDebounce } from "react-table";
+import { useTable, useRowSelect, useFlexLayout, useSortBy, useGlobalFilter, useAsyncDebounce, usePagination } from "react-table";
 import { useDrag, useDrop } from "react-dnd";
 import update from "immutability-helper";
 import Checkbox, { IndeterminateCheckbox } from "./Checkbox";
@@ -7,6 +7,8 @@ import { TableTypes, ColumnSizes } from "../constants/TableActions";
 import { toReadable } from "../constants/Date";
 import "../stylesheets/Table.css";
 import EditRowForm from "./EditRowForm";
+
+const PAGE_SIZE = 50;
 
 const CellGenerator = ({ type = TableTypes.TEXT, value }) => (
   type === TableTypes.BOOLEAN ?
@@ -66,7 +68,7 @@ function prepData(row, columns) {
   return displayRow;
 }
 
-const Row = ({ row, index, moveRow, custom, focusRow, tableId, dragOverIndex, setDragOverIndex, onReorder }) => {
+const Row = ({ row, index, currentIndex, moveRow, custom, focusRow, tableId, dragOverIndex, setDragOverIndex, onReorder }) => {
   const dropRef = React.useRef(null);
 
   const [, drop] = useDrop({
@@ -116,14 +118,15 @@ const Row = ({ row, index, moveRow, custom, focusRow, tableId, dragOverIndex, se
     <tr
       ref={dropRef}
       className={"clickable" + (dragOverIndex === index ? " invisible" : "")}
-      onClick={() => focusRow(index)} {...row.getRowProps()}
+      onClick={() => focusRow(index)}
+      {...row.getRowProps()}
     >
       {row.cells.map((cell) => (
         <td
           className={cell.column.id + " " + (cell.column.size ? cell.column.size.toLowerCase() : "")}
           {...cell.getCellProps()}
         >
-          {cell.render("Cell")}
+          {cell.render("Cell", { currentIndex })}
         </td>
       ))}
     </tr>
@@ -148,35 +151,98 @@ const SearchBar = ({ globalFilter, setGlobalFilter }) => {
       />
     </div>
   );
+};
+
+const PageButtons = ({ pageCount, pageIndex, canPreviousPage, canNextPage, gotoPage, nextPage, previousPage }) => {
+  const [inputValue, setInputValue] = React.useState(pageIndex + 1);
+
+  const setPage = (e) => {
+    let value = e.target.value;
+    setInputValue(value);
+    if (value > 0 && value <= pageCount) {
+      gotoPage(value - 1);
+    }
+  };
+
+  React.useEffect(() => setInputValue(pageIndex + 1), [pageIndex]);
+
+  if (pageCount <= 1) {
+    return null;
+  } else {
+    return (
+      <tfoot>
+        <tr>
+          <td className={"page-buttons"}>
+            <button type={"button"} disabled={!canPreviousPage} onClick={() => gotoPage(0)}>
+              <i className={"fas fa-chevron-left"} />
+              <i className={"fas fa-chevron-left"} />
+            </button>
+            <button type={"button"} disabled={!canPreviousPage} onClick={previousPage}>
+              <i className={"fas fa-chevron-left"} />
+            </button>
+            <label>
+              Page &nbsp;
+              <input type={"text"} value={inputValue} onChange={setPage} />
+              &nbsp; of {pageCount}
+            </label>
+            <button type={"button"} disabled={!canNextPage} onClick={nextPage}>
+              <i className={"fas fa-chevron-right"} />
+            </button>
+            <button type={"button"} disabled={!canNextPage} onClick={() => gotoPage(pageCount - 1)}>
+              <i className={"fas fa-chevron-right"} />
+              <i className={"fas fa-chevron-right"} />
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    );
+  }
 }
 
 const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = false, onEdit = () => {}, id = "", pushState = () => {}, getDataValues = (data) => data, getColumnValues = (columns) => columns, extraFields = [], extraParams, defaultSortCol }) => {
+  // eslint-disable-next-line
   const preppedColumns = React.useMemo(() => getColumnValues(columns).map(prepHeaders), [columns]);
+  // eslint-disable-next-line
   const preppedData = React.useMemo(() => getDataValues(data).map((row) => prepData(row, getColumnValues(columns))), [data, columns]);
   const [modalOpen, toggleModal] = React.useState(false);
   const [focusedRow, setFocusedRow] = React.useState(null);
   const [records, setRecords] = React.useState(preppedData);
   const [dragOverIndex, setDragOverIndex] = React.useState(-1);
+  const prevSelectedRef = React.useRef(null);
 
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
-    rows,
+    page,
+    canPreviousPage,
+    canNextPage,
+    nextPage,
+    previousPage,
+    gotoPage,
+    pageCount,
     prepareRow,
     setGlobalFilter,
-    state: { selectedRowIds, globalFilter }
+    toggleRowSelected,
+    state: { selectedRowIds, globalFilter, pageIndex }
   } = useTable(
     {
       columns: preppedColumns,
       data: records,
       defaultColumn: ColumnSizes.MEDIUM,
       autoResetGlobalFilter: false,
+      autoResetSelectedRows: false,
+      autoResetPage: false,
       disableSortRemove: true,
-      initialState: { sortBy: [{ id: defaultSortCol, desc: false }]}
+      initialState: {
+        sortBy: [{ id: defaultSortCol, desc: false }],
+        pageSize: PAGE_SIZE,
+        pageIndex: 0
+      }
     },
     useGlobalFilter,
     useSortBy,
+    usePagination,
     useRowSelect,
     useFlexLayout,
     (hooks) => {
@@ -186,13 +252,44 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
           minWidth: 1,
           width: 1,
           maxWidth: 1,
-          Header: ({ getToggleAllRowsSelectedProps }) => <IndeterminateCheckbox {...getToggleAllRowsSelectedProps()} />,
-          Cell: ({ row }) => <IndeterminateCheckbox {...row.getToggleRowSelectedProps()} />
+          Header: ({ getToggleAllRowsSelectedProps }) => {
+            const toggleAllRowSelectedProps = getToggleAllRowsSelectedProps();
+            const onChange = (e) => {
+              toggleAllRowSelectedProps.onChange(e);
+              prevSelectedRef.current = null;
+            }
+            return <IndeterminateCheckbox {...toggleAllRowSelectedProps} onChange={onChange} />;
+          },
+          Cell: ({ row, currentIndex, rows }) => {
+            const toggleRowSelectedProps = row.getToggleRowSelectedProps();
+            const onChange = (e) => {
+              multiSelect(e, currentIndex, toggleRowSelectedProps.onChange, rows);
+              prevSelectedRef.current = { id: row.id, index: currentIndex, checked: e.target.checked };
+            }
+            return <IndeterminateCheckbox {...toggleRowSelectedProps} onChange={onChange} />;
+          }
         },
         ...columns.map(generateColumn)
       ]);
     }
   );
+
+  const multiSelect = (e, index, onChange, rows) => {
+    if (!(e.nativeEvent.shiftKey && prevSelectedRef.current)) {
+      onChange(e);
+      return;
+    }
+    let prevSelected = prevSelectedRef.current;
+    if (index < prevSelected.index) {
+      for (let i = prevSelected.index; i >= index; i--) {
+        toggleRowSelected(rows[i].id, prevSelected.checked);
+      }
+    } else {
+      for (let i = prevSelected.index; i <= index; i++) {
+        toggleRowSelected(rows[i].id, prevSelected.checked);
+      }
+    }
+  }
 
   const focusRow = (row) => {
     setFocusedRow(row);
@@ -284,19 +381,20 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
           ))}
         </thead>
         <tbody {...getTableBodyProps()}>
-          {rows.length === 0 ?
+          {page.length === 0 ?
             <tr className={"no-data"}>
               <td>No data to display</td>
             </tr> :
-            rows.map((row, index) => {
+            page.map((row, index) => {
               prepareRow(row);
               return (
                 <Row
-                  key={index}
+                  key={row.id}
                   data={records}
                   custom={custom}
                   focusRow={focusRow}
                   index={row.id}
+                  currentIndex={index + (pageIndex * PAGE_SIZE)}
                   row={row}
                   moveRow={moveRow}
                   tableId={id}
@@ -308,6 +406,15 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
             })
           }
         </tbody>
+        <PageButtons
+          canNextPage={canNextPage}
+          canPreviousPage={canPreviousPage}
+          gotoPage={gotoPage}
+          nextPage={nextPage}
+          pageCount={pageCount}
+          pageIndex={pageIndex}
+          previousPage={previousPage}
+        />
       </table>
     </>
   )

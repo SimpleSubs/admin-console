@@ -138,8 +138,10 @@ table thead tr th.table-title {
   flex: 3;
   text-align: center;
 }
-table thead tr th .sort-arrow.down i {
+table thead tr th .sort-arrow i {
   transition: all 0.2s ease;
+}
+table thead tr th .sort-arrow.down i {
   transform: rotate(180deg);
 }
 table thead tr th .sort-arrow-placeholder {
@@ -192,6 +194,43 @@ table thead tr .search-bar input {
 }
 table thead tr .search-bar input::placeholder {
   color: #b6b6b6;
+}
+table tfoot {
+  position: sticky;
+  bottom: -10px;
+  background-color: #fff;
+  border-radius: 0 0 5px 5px;
+  box-shadow: 0 -3px 5px 0 #0000001f;
+}
+table tfoot .page-buttons {
+  flex-direction: row;
+  justify-content: flex-end;
+  font-size: 16px;
+}
+table tfoot .page-buttons button {
+  flex-direction: row;
+  padding: 10px;
+  margin: 0 2px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+}
+table tfoot .page-buttons button:hover {
+  background-color: #d7d7d7;
+}
+table tfoot .page-buttons button:disabled, table tfoot .page-buttons button[disabled] {
+  cursor: default;
+  background-color: transparent;
+}
+table tfoot .page-buttons button:disabled i, table tfoot .page-buttons button[disabled] i {
+  color: #a4a4a4;
+}
+table tfoot .page-buttons label {
+  flex-direction: row;
+  padding: 5px 10px;
+  align-items: center;
+}
+table tfoot .page-buttons label input {
+  padding: 10px;
 }
 table td, table th {
   padding: 20px;
