@@ -59,7 +59,7 @@ function getCounts(orders, orderOptions) {
         if (option.type === "PICKER") {
           row.push(orders.filter((order) => order[option.key] === ingredient).length);
         } else {
-          row.push(orders.filter((order) => order[option.key].includes(ingredient)).length);
+          row.push(orders.filter((order) => order[option.key]?.includes(ingredient)).length);
         }
         counts.push(row);
       }
@@ -75,7 +75,7 @@ function downloadOrders(selected, orders, users, orderOptions, userFields) {
   let ordersToDownload;
   // Download all selected orders
   if (Object.keys(selected).length > 0) {
-    ordersToDownload = orders.filter((order, i) => selected[i.toString()]);
+    ordersToDownload = orders.filter((order, i) => selected[i]);
   // Download today's orders if nothing is selected
   } else {
     let now = moment();
