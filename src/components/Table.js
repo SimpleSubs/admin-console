@@ -235,7 +235,7 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
       autoResetPage: false,
       disableSortRemove: true,
       initialState: {
-        sortBy: [{ id: defaultSortCol, desc: false }],
+        sortBy: defaultSortCol ? [{ id: defaultSortCol, desc: false }] : [],
         pageSize: PAGE_SIZE,
         pageIndex: 0
       }
