@@ -1,36 +1,12 @@
 @use "colors";
 
-.edit-row-form-background {
-  transition: all 0.2s ease;
-  position: fixed;
-  height: 100vh;
-  width: 100vw;
-  top: 0;
-  left: 0;
-  background-color: #00000088;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000000;
-  &.closed {
-    opacity: 0;
-    pointer-events: none;
-    .edit-row-form {
-      pointer-events: none;
-      transform: scale(0.9);
-    }
-  }
-}
-
 .edit-row-form {
-  transition: transform 0.2s ease;
-  pointer-events: auto;
   background-color: #fff;
   width: 60vw;
   max-width: 800px;
   max-height: 90vh;
   padding: 40px;
   border-radius: 20px;
-  box-shadow: 0 0 10px 0 #0000003f;
   label {
     flex-direction: row;
     span {

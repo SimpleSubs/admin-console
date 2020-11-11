@@ -2,9 +2,10 @@ import React from "react";
 import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
-import {deleteUsers, resetPasswords, updateUser} from "../redux/Actions";
+import { deleteUsers, resetPasswords, updateUser } from "../redux/Actions";
 import Loading from "./Loading";
 import { UserColumns } from "../constants/TableConstants";
+import WarningModal from "../components/WarningModal";
 
 const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswords, updateUser }) => {
   const userData = React.useMemo(
@@ -14,13 +15,17 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
     () => userFields ? userFields.map((field) => ({...field, type: field.inputType})) : null,
     [userFields]
   );
+  const [deleteWarningOpen, setDeleteWarningOpen] = React.useState(false);
+  const [resetWarningOpen, setResetWarningOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState({});
+
   if (!userData) {
     return <Loading />
   }
-  const deleteSelected = (selected) => {
+  const deleteSelected = () => {
     deleteUsers(Object.keys(selected).map((index) => userData[index].uid), user.uid);
   };
-  const resetSelected = (selected) => {
+  const resetSelected = () => {
     resetPasswords(Object.keys(selected).map((index) => userData[index].uid));
   }
   const MenuButtons = {
@@ -29,10 +34,22 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
         selected={selected}
         actions={(anySelected = false) => {
           let actions = [
-            { title: `Reset ${anySelected ? "selected" : "all"} passwords`, action: () => resetSelected(selected) }
+            {
+              title: `Reset ${anySelected ? "selected" : "all"} passwords`,
+              action: () => {
+                setSelected(selected);
+                setResetWarningOpen(true);
+              }
+            }
           ];
           if (anySelected) {
-            actions.push({ title: "Delete selected users", action: () => deleteSelected(selected) });
+            actions.push({
+              title: "Delete selected users",
+              action: () => {
+                setSelected(selected);
+                setDeleteWarningOpen(true);
+              }
+            });
           }
           return actions;
         }}
@@ -49,6 +66,8 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
 
   return (
     <div id={"Users"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
+      <WarningModal open={deleteWarningOpen} onSubmit={deleteSelected} closeModal={() => setDeleteWarningOpen(false)} />
+      <WarningModal open={resetWarningOpen} onSubmit={resetSelected} closeModal={() => setResetWarningOpen(false)} />
       <Table
         data={userData}
         columns={columns}

@@ -207,7 +207,7 @@ const EditRowForm = ({ fields, id, prevData = {}, onSubmit = () => {}, open, clo
   }, [prevData, fields, open]);
 
   return (
-    <div className={"edit-row-form-background " + (open ? "open" : "closed")} onClick={cancel}>
+    <div className={"pop-up-form-background " + (open ? "open" : "closed")} onClick={cancel}>
       <form className={"edit-row-form"} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         {fields.map((field) => <FormRow {...field} fieldKey={field.key} id={id} state={state} setState={setState} extraParams={extraParams} prevData={prevData} />)}
         <div className={"footer"}>

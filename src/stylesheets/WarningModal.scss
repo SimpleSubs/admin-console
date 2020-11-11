@@ -1,0 +1,27 @@
+@use "colors";
+
+.warning-modal {
+  background-color: colors.$backgroundColor;
+  padding: 30px;
+  max-width: 350px;
+  border-radius: 20px;
+  text-align: center;
+  h3 {
+    margin: 0;
+  }
+  div {
+    flex-direction: row;
+    justify-content: center;
+    input {
+      margin: 0 5px;
+      &[type=button] {
+        background-color: transparent;
+        border: 1px colors.$secondaryText solid;
+        color: colors.$secondaryText;
+        &:hover {
+          background-color: colors.$textInputColor;
+        }
+      }
+    }
+  }
+}

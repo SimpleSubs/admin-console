@@ -9,6 +9,7 @@ import Loading from "./Loading";
 import { connect } from "react-redux";
 import { deleteOrders, updateOrder } from "../redux/Actions";
 import HamburgerButton from "../components/HamburgerButton";
+import WarningModal from "../components/WarningModal";
 
 function tableValues(order, users) {
   if (users[order.uid]) {
@@ -106,11 +107,14 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
     ),
     [orderOptions, orders, users]
   );
+  const [warningOpen, setWarningOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState({});
+
   if (!data) {
     return <Loading />
   }
 
-  const deleteSelected = (selected) => {
+  const deleteSelected = () => {
     deleteOrders(Object.keys(selected).map((index) => data[index].key));
   }
 
@@ -123,7 +127,13 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
             { title: `Download ${anySelected ? "selected" : "today's"} orders`, action: () => downloadOrders(selected, data, users, orderOptions, userFields) },
           ];
           if (anySelected) {
-            actions.push({ title: "Delete selected orders", action: () => deleteSelected(selected) });
+            actions.push({
+              title: "Delete selected orders",
+              action: () => {
+                setSelected(selected);
+                setWarningOpen(true);
+              }
+            });
           }
           return actions;
         }}
@@ -154,6 +164,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
 
   return (
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
+      <WarningModal closeModal={() => setWarningOpen(false)} onSubmit={deleteSelected} open={warningOpen} />
       <Table
         data={data}
         columns={orderOptions}
