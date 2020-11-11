@@ -60,23 +60,15 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
   return deleteUsersResult;
 });
 
-exports.getUsers = functions.https.onCall(async (data, context) => {
+exports.listAllUsers = functions.https.onCall(async (data, context) => {
   await checkAuth(context.auth);
-  let uids = data.uids;
+  // Assume that there are no more than 1000 users
+  let listUsersResult = await admin.auth().listUsers(1000).catch(throwError);
   let users = {};
-  let notFound = [];
-  for (let i = 0; i < uids.length; i += 100) {
-    let endIndex = i + 100 <= uids.length ? i + 100 : uids.length;
-    let getUsersResult = await admin.auth().getUsers(uids.slice(i, endIndex).map((uid) => ({ uid }))).catch(throwError);
-    for (let user of getUsersResult.users) {
-      users[user.uid] = user.email;
-    }
-    notFound.concat(getUsersResult.notFound.map(({ uid }) => uid));
-  }
-  return {
-    users,
-    notFound
-  };
+  listUsersResult.users.forEach(({ uid, email }) => {
+    users[uid] = { email };
+  })
+  return users;
 });
 
 exports.setEmail = functions.https.onCall(async (data, context) => {

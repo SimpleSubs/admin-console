@@ -8,7 +8,7 @@ import firebaseConfig from "../firebase-config.json";
 firebase.initializeApp(firebaseConfig);
 firebase.analytics();
 
-export const executeFunction = async (name, data) => {
+export const executeFunction = async (name, data = {}) => {
   let authorization = firebase.auth().currentUser ?
     { "Authorization": "Bearer " + await firebase.auth().currentUser.getIdToken(true) } :
     {};

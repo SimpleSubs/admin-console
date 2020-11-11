@@ -5,7 +5,6 @@ import moment from "moment";
 const Actions = {
   UPDATE_ORDERS: "UPDATE_ORDERS",
   UPDATE_USERS: "UPDATE_USERS",
-  DELETE_USERS: "DELETE_USERS",
   UPDATE_APP_SETTINGS: "UPDATE_APP_SETTINGS",
   SET_USER: "SET_USER",
   SET_LOADING: "SET_LOADING"
@@ -31,13 +30,6 @@ function updateOrders(orders) {
   return {
     type: Actions.UPDATE_ORDERS,
     orders
-  };
-}
-
-function deleteUsersAction(users) {
-  return {
-    type: Actions.DELETE_USERS,
-    users
   };
 }
 
@@ -205,23 +197,23 @@ export function usersListener(dispatch, isLoggedIn) {
     .onSnapshot((querySnapshot) => {
       dispatch(setLoading(true));
       let users = {};
-      let added = {};
-      let removed = [];
-      querySnapshot.docChanges().forEach(({ doc, type }) => {
-        if (type === "removed") {
-          removed.push(doc.id);
-        } else {
-          added[doc.id] = doc.data();
-        }
+      querySnapshot.forEach((doc) => {
+        users[doc.id] = doc.data();
       });
-      dispatch(deleteUsersAction(removed));
-      executeFunction("getUsers", { uids: Object.keys(added) })
+      executeFunction("listAllUsers")
         .then((result) => {
-          for (let uid of Object.keys(result.users)) {
-            users[uid] = {
-              email: result.users[uid],
-              ...added[uid],
-              key: uid
+          for (let uid of Object.keys(result)) {
+            if (users[uid]) {
+              users[uid] = {
+                ...users[uid],
+                ...result[uid],
+                key: uid
+              }
+            } else {
+              users[uid] = {
+                ...result[uid],
+                key: uid
+              }
             }
           }
           dispatch(updateUsers(users));

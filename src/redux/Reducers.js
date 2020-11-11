@@ -7,23 +7,11 @@ const orders = (state = null, action) => (
     state
 );
 
-const users = (state = null, action) => {
-  switch (action.type) {
-    case Actions.UPDATE_USERS:
-      return {
-        ...state,
-        ...action.users
-      }
-    case Actions.DELETE_USERS:
-      let newUsers = { ...state };
-      for (let uid of action.users) {
-        delete newUsers[uid];
-      }
-      return newUsers;
-    default:
-      return state;
-  }
-};
+const users = (state = null, action) => (
+  action.type === Actions.UPDATE_USERS ?
+    action.users :
+    state
+);
 
 const appSettings = (state = null, action) => (
   action.type === Actions.UPDATE_APP_SETTINGS ?
