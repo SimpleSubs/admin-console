@@ -6,9 +6,9 @@ import "firebase/analytics";
 import firebaseConfig from "../firebase-config.json";
 
 firebase.initializeApp(firebaseConfig);
-firebase.analytics();
+// firebase.analytics();
 
-export const executeFunction = async (name, data = {}) => {
+const executeFunction = async (name, data = {}) => {
   let authorization = firebase.auth().currentUser ?
     { "Authorization": "Bearer " + await firebase.auth().currentUser.getIdToken(true) } :
     {};
@@ -27,6 +27,12 @@ export const executeFunction = async (name, data = {}) => {
     throw new Error(e.message);
   }
 }
+
+export const checkIsAdmin = async (email) => await executeFunction("checkIsAdmin", { email });
+export const deleteUsersFunction = async (uids) => await executeFunction("deleteUsers", { uids });
+export const setEmail = async (email, uid) => await executeFunction("setEmail", { email, uid });
+export const resetPasswordsFunction = async (uids) => await executeFunction("resetPasswords", { uids });
+export const listAllUsers = async () => await executeFunction("listAllUsers");
 
 export const firestore = firebase.firestore();
 export const auth = firebase.auth();

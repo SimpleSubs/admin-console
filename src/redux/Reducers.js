@@ -1,5 +1,5 @@
 import Actions from "./Actions";
-import {combineReducers} from "redux";
+import { combineReducers } from "redux";
 
 const orders = (state = null, action) => (
   action.type === Actions.UPDATE_ORDERS ?

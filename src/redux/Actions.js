@@ -1,4 +1,12 @@
-import { firestore, auth, executeFunction } from "../constants/Firebase";
+import {
+  firestore,
+  auth,
+  checkIsAdmin,
+  deleteUsersFunction,
+  setEmail,
+  resetPasswordsFunction,
+  listAllUsers
+} from "../constants/Firebase";
 import { parseISO } from "../constants/Date";
 import moment from "moment";
 
@@ -56,7 +64,7 @@ export function setLoading(loading) {
 
 export function logIn(email, password, dispatch, setError) {
   dispatch(setLoading(true));
-  executeFunction("checkIsAdmin", { email }).then((isAdmin) => {
+  checkIsAdmin(email).then((isAdmin) => {
     if (!isAdmin) {
       dispatch(setLoading(false));
       setError("permission-denied");
@@ -87,7 +95,7 @@ export function logOut(dispatch) {
 export function deleteUsers(uidsToDelete, myUid, dispatch) {
   dispatch(setLoading(true));
   let uids = uidsToDelete.filter((uid) => uid !== myUid);
-  executeFunction("deleteUsers", { uids }).then(({ successCount }) => {
+  deleteUsersFunction(uids).then(({ successCount }) => {
     console.log("Successfully deleted " + successCount + " users");
     dispatch(setLoading(false));
   }).catch((error) => reportError(error, dispatch));
@@ -117,7 +125,7 @@ export async function updateUser(uid, userData, prevUserData, dispatch) {
   dispatch(setLoading(true));
   if (userData.email !== prevUserData.email) {
     try {
-      await executeFunction("setEmail", { email: userData.email, uid });
+      await setEmail(userData.email, uid);
     } catch (e) {
       reportError(e, dispatch);
     }
@@ -133,7 +141,7 @@ export async function updateUser(uid, userData, prevUserData, dispatch) {
 
 export function resetPasswords(uids, dispatch) {
   dispatch(setLoading(true));
-  executeFunction("resetPasswords", { uids }).then((password) => {
+  resetPasswordsFunction(uids).then((password) => {
     console.log("Successfully reset passwords to '" + password + "'.");
     dispatch(setLoading(false));
   }).catch((error) => reportError(error, dispatch));
@@ -200,25 +208,24 @@ export function usersListener(dispatch, isLoggedIn) {
       querySnapshot.forEach((doc) => {
         users[doc.id] = doc.data();
       });
-      executeFunction("listAllUsers")
-        .then((result) => {
-          for (let uid of Object.keys(result)) {
-            if (users[uid]) {
-              users[uid] = {
-                ...users[uid],
-                ...result[uid],
-                key: uid
-              }
-            } else {
-              users[uid] = {
-                ...result[uid],
-                key: uid
-              }
+      listAllUsers().then((result) => {
+        for (let uid of Object.keys(result)) {
+          if (users[uid]) {
+            users[uid] = {
+              ...users[uid],
+              ...result[uid],
+              key: uid
+            }
+          } else {
+            users[uid] = {
+              ...result[uid],
+              key: uid
             }
           }
-          dispatch(updateUsers(users));
-          dispatch(setLoading(false));
-        }).catch((error) => reportError(error, dispatch));
+        }
+        dispatch(updateUsers(users));
+        dispatch(setLoading(false));
+      }).catch((error) => reportError(error, dispatch));
     });
 }
 
