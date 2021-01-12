@@ -36,3 +36,11 @@ export const listAllUsers = async () => await executeFunction("listAllUsers");
 
 export const firestore = firebase.firestore();
 export const auth = firebase.auth();
+
+export function arrayToObject(arr) {
+  let obj = {};
+  for (let i = 0; i < arr.length; i++) {
+    obj[i.toString()] = arr[i];
+  }
+  return obj;
+}

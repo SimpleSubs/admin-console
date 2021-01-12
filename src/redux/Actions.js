@@ -1,6 +1,7 @@
 import {
   firestore,
   auth,
+  arrayToObject,
   checkIsAdmin,
   deleteUsersFunction,
   setEmail,
@@ -14,13 +15,14 @@ const Actions = {
   UPDATE_ORDERS: "UPDATE_ORDERS",
   UPDATE_USERS: "UPDATE_USERS",
   UPDATE_APP_SETTINGS: "UPDATE_APP_SETTINGS",
+  SET_DOMAIN: "SET_DOMAIN",
   SET_USER: "SET_USER",
   SET_LOADING: "SET_LOADING"
 };
 
 export default Actions;
 
-const APP_SETTINGS_COLLECTION = firestore.collection("appData").doc("appConstants");
+const domainData = (domain) => firestore.collection("domains").doc(domain);
 
 function reportError(error, dispatch) {
   dispatch(setLoading(false));
@@ -55,10 +57,26 @@ function updateAppSettings(appSettings) {
   }
 }
 
+function setDomain(domain) {
+  return {
+    type: Actions.SET_DOMAIN,
+    domain
+  }
+}
+
 export function setLoading(loading) {
   return {
     type: Actions.SET_LOADING,
     loading
+  }
+}
+
+async function getDomain(uid, dispatch) {
+  try {
+    let domain = (await firestore.collection("userDomains").doc(uid).get()).data().domain;
+    dispatch(setDomain(domain));
+  } catch (error) {
+    reportError(error, dispatch);
   }
 }
 
@@ -101,9 +119,9 @@ export function deleteUsers(uidsToDelete, myUid, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
-export function updateOrder(id, order, dispatch) {
+export function updateOrder(id, order, dispatch, domain) {
   dispatch(setLoading(true));
-  firestore.collection("allOrders").doc(id)
+  domainData(domain).collection("orders").doc(id)
     .set(order)
     .then(() => {
       console.log("Successfully updated order");
@@ -111,9 +129,9 @@ export function updateOrder(id, order, dispatch) {
     }).catch((error) => console.error(error));
 }
 
-export function deleteOrders(orders, dispatch) {
+export function deleteOrders(orders, dispatch, domain) {
   dispatch(setLoading(true));
-  const allOrders = firestore.collection("allOrders");
+  const allOrders = domainData(domain).collection("orders");
   Promise.all(orders.map((order) => allOrders.doc(order).delete()))
     .then(() => {
       console.log("Successfully deleted " + orders.length + " orders");
@@ -121,7 +139,7 @@ export function deleteOrders(orders, dispatch) {
     }).catch((error) => reportError(error, dispatch));
 }
 
-export async function updateUser(uid, userData, prevUserData, dispatch) {
+export async function updateUser(uid, userData, prevUserData, dispatch, domain) {
   dispatch(setLoading(true));
   if (userData.email !== prevUserData.email) {
     try {
@@ -131,7 +149,7 @@ export async function updateUser(uid, userData, prevUserData, dispatch) {
     }
   }
   try {
-    await firestore.collection("userData").doc(uid).set(userData);
+    await domainData(domain).collection("userData").doc(uid).set(userData);
     console.log("Successfully updated user data.");
     dispatch(setLoading(false));
   } catch (e) {
@@ -147,42 +165,36 @@ export function resetPasswords(uids, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
-export function setCutoffTime(time, appSettings, dispatch) {
+export function setCutoffTime(time, dispatch, domain) {
   dispatch(setLoading(true));
-  APP_SETTINGS_COLLECTION.set({
-    ...appSettings,
-    cutoffTime: time
-  }).then(() => {
-    console.log("Successfully updated cutoff time");
-    dispatch(setLoading(false));
-  }).catch((error) => reportError(error, dispatch));
+  domainData(domain).collection("appData").doc("cutoffTime").set(time)
+    .then(() => {
+      console.log("Successfully updated cutoff time");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
 }
 
-export function setOrderOptions(newOptions, appSettings, dispatch) {
+export function setOrderOptions(newOptions, dispatch, domain) {
   dispatch(setLoading(true));
-  APP_SETTINGS_COLLECTION.set({
-    ...appSettings,
-    orderOptions: newOptions
-  }).then(() => {
-    console.log("Successfully updated order fields");
-    dispatch(setLoading(false));
-  }).catch((error) => reportError(error, dispatch));
+  domainData(domain).collection("appData").doc("orderOptions").set(arrayToObject(newOptions))
+    .then(() => {
+      console.log("Successfully updated order fields");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
 }
 
-export function setUserFields(newFields, appSettings, dispatch) {
+export function setUserFields(newFields, dispatch, domain) {
   dispatch(setLoading(true));
-  APP_SETTINGS_COLLECTION.set({
-    ...appSettings,
-    userFields: newFields
-  }).then(() => {
-    console.log("Successfully updated user fields");
-    dispatch(setLoading(false));
-  }).catch((error) => reportError(error, dispatch));
+  domainData(domain).collection("appData").doc("userFields").set(arrayToObject(newFields))
+    .then(() => {
+      console.log("Successfully updated user fields");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
 }
 
-export function orderListener(dispatch, isLoggedIn) {
+export function orderListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
-  return firestore.collection("allOrders")
+  return domainData(domain).collection("orders")
     .onSnapshot((querySnapshot) => {
       let orders = [];
       querySnapshot.forEach((doc) => {
@@ -199,9 +211,9 @@ export function orderListener(dispatch, isLoggedIn) {
     });
 }
 
-export function usersListener(dispatch, isLoggedIn) {
+export function usersListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
-  return firestore.collection("userData")
+  return domainData(domain).collection("userData")
     .onSnapshot((querySnapshot) => {
       dispatch(setLoading(true));
       let users = {};
@@ -229,27 +241,44 @@ export function usersListener(dispatch, isLoggedIn) {
     });
 }
 
-export function appSettingsListener(dispatch, isLoggedIn) {
+export function appSettingsListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
-  return APP_SETTINGS_COLLECTION.onSnapshot((doc) => {
-    dispatch(updateAppSettings(doc.data()))
-  })
+  return domainData(domain).collection("appData")
+    .onSnapshot((querySnapshot) => {
+      dispatch(setLoading(true));
+      let appSettings = {};
+      if (querySnapshot.empty) {
+        setCutoffTime({ hours: 0, minutes: 0 }, dispatch, domain);
+        setOrderOptions([], dispatch, domain);
+        setUserFields([], dispatch, domain);
+        return;
+      }
+      querySnapshot.forEach((doc) => {
+        if (doc.id === "cutoffTime") {
+          appSettings[doc.id] = doc.data();
+        } else {
+          appSettings[doc.id] = Object.values(doc.data());
+        }
+      });
+      dispatch(updateAppSettings(appSettings));
+    })
 }
 
 export function authListener(dispatch) {
   return auth.onAuthStateChanged((user) => {
     if (user) {
-      dispatch(setUserData({}));
+      getDomain(user.uid, dispatch).then(() => dispatch(setUserData({})));
     } else {
       dispatch(setUserData(null));
+      setDomain(null);
     }
   });
 }
 
-export function userDataListener(dispatch) {
+export function userDataListener(dispatch, domain) {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
-  return firestore.collection("userData").doc(uid)
+  return domainData(domain).collection("userData").doc(uid)
     .onSnapshot((doc) => {
       dispatch(setUserData({
         ...doc.data(),

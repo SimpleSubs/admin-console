@@ -25,6 +25,12 @@ const user = (state = null, action) => (
     state
 );
 
+const domain = (state = null, action) => (
+  action.type === Actions.SET_DOMAIN ?
+    action.domain :
+    state
+);
+
 const loading = (state = false, action) => (
   action.type === Actions.SET_LOADING ?
     action.loading :
@@ -38,6 +44,7 @@ const consoleApp = combineReducers({
   users,
   appSettings,
   user,
+  domain,
   loading,
   hasAuthenticated
 })

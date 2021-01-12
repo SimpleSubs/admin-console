@@ -98,7 +98,7 @@ function downloadOrders(selected, orders, users, orderOptions, userFields) {
   link.click();
 }
 
-const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateOrder, deleteOrders }) => {
+const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateOrder, deleteOrders, domain }) => {
   const data = React.useMemo(
     () => (
       (orders && users && orderOptions)
@@ -115,7 +115,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
   }
 
   const deleteSelected = () => {
-    deleteOrders(Object.keys(selected).map((index) => data[index].key));
+    deleteOrders(Object.keys(selected).map((index) => data[index].key), domain);
   }
 
   const MenuButtons = {
@@ -159,7 +159,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
     let fixedOrder = {...editedOrder};
     delete fixedOrder.user;
     delete fixedOrder.key;
-    updateOrder(key, fixedOrder);
+    updateOrder(key, fixedOrder, domain);
   }
 
   return (
@@ -180,19 +180,20 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
   )
 };
 
-const mapStateToProps = ({ orders, appSettings, users }) => ({
+const mapStateToProps = ({ orders, appSettings, users, domain }) => ({
   orders,
   orderOptions: appSettings ? [
     ...OrderColumns,
-    ...appSettings.orderOptions
+    ...(appSettings.orderOptions || [])
   ] : null,
   users,
+  domain,
   userFields: appSettings?.userFields
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  updateOrder: (id, order) => updateOrder(id, order, dispatch),
-  deleteOrders: (orders) => deleteOrders(orders, dispatch)
+  updateOrder: (id, order, domain) => updateOrder(id, order, dispatch, domain),
+  deleteOrders: (orders, domain) => deleteOrders(orders, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Orders);

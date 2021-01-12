@@ -23,8 +23,7 @@ function toStateFormat(cutoffTime) {
   return { hours, minutes, isAM };
 }
 
-const CutoffTime = ({ appSettings, setCutoffTime }) => {
-  const { cutoffTime } = appSettings;
+const CutoffTime = ({ cutoffTime, setCutoffTime }) => {
   const [showError, toggleError] = React.useState(false);
   const [state, setState] = React.useState(toStateFormat(cutoffTime));
 
@@ -41,7 +40,7 @@ const CutoffTime = ({ appSettings, setCutoffTime }) => {
     } else if (!isAM && hours !== 12) {
       hours += 12;
     }
-    setCutoffTime({ hours, minutes }, appSettings);
+    setCutoffTime({ hours, minutes });
   };
   const setHours = (e) => {
     setState({ ...state, hours: parseInt(e.target.value) });
@@ -95,22 +94,22 @@ const CutoffTime = ({ appSettings, setCutoffTime }) => {
   )
 }
 
-const OrderOptionsTable = ({ appSettings, setOrderOptions }) => {
+const OrderOptionsTable = ({ orderOptions, setOrderOptions }) => {
   const editOrderOption = (index, editedOption) => {
-    let newOptions = [...appSettings.orderOptions];
+    let newOptions = [...orderOptions];
     if (index !== null) {
       newOptions[index] = editedOption;
     } else {
       newOptions.push(editedOption);
     }
-    setOrderOptions(newOptions, appSettings);
+    setOrderOptions(newOptions);
   };
 
   const deleteOrderOptions = (selected) => {
     let newOptions = Object.keys(selected).length > 0 ?
-      appSettings.orderOptions.filter((option, index) => !selected[index]) :
+      orderOptions.filter((option, index) => !selected[index]) :
       [];
-    setOrderOptions(newOptions, appSettings);
+    setOrderOptions(newOptions);
   }
 
   const MenuButtons = {
@@ -130,32 +129,32 @@ const OrderOptionsTable = ({ appSettings, setOrderOptions }) => {
     <Table
       id={"order-options-table"}
       custom
-      data={appSettings.orderOptions}
+      data={orderOptions}
       columns={OrderOptionColumns}
       title={"Order Fields"}
       MenuButtons={MenuButtons}
       onEdit={editOrderOption}
-      pushState={(newState) => setOrderOptions(newState, appSettings)}
+      pushState={(newState) => setOrderOptions(newState)}
     />
   );
 };
 
-const UserFieldsTable = ({ appSettings, setUserFields }) => {
+const UserFieldsTable = ({ userFields, setUserFields }) => {
   const editUserField = (index, editedField) => {
-    let newFields = [...appSettings.userFields];
+    let newFields = [...userFields];
     if (index !== null) {
       newFields[index] = editedField;
     } else {
       newFields.push(editedField);
     }
-    setUserFields(newFields, appSettings);
+    setUserFields(newFields);
   };
 
   const deleteUserFields = (selected) => {
     let newFields = Object.keys(selected).length > 0 ?
-      appSettings.userFields.filter((option, index) => !selected[index]) :
+      userFields.filter((option, index) => !selected[index]) :
       [];
-    setUserFields(newFields, appSettings);
+    setUserFields(newFields);
   };
 
   const MenuButtons = {
@@ -175,32 +174,35 @@ const UserFieldsTable = ({ appSettings, setUserFields }) => {
     <Table
       id={"user-fields-table"}
       custom
-      data={appSettings.userFields}
+      data={userFields}
       columns={UserFieldColumns}
       title={"User Fields"}
       MenuButtons={MenuButtons}
       onEdit={editUserField}
-      pushState={(newState) => setUserFields(newState, appSettings)}
+      pushState={(newState) => setUserFields(newState)}
     />
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, setCutoffTime, setOrderOptions, setUserFields }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
-      <CutoffTime appSettings={appSettings} setCutoffTime={setCutoffTime} />
-      <OrderOptionsTable appSettings={appSettings} setOrderOptions={setOrderOptions} />
-      <UserFieldsTable appSettings={appSettings} setUserFields={setUserFields} />
+      <CutoffTime cutoffTime={appSettings.cutoffTime} setCutoffTime={(time) => setCutoffTime(time, domain)} />
+      <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain)} />
+      <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain)} />
     </div>
 );
 
-const mapStateToProps = ({ appSettings }) => ({ appSettings });
+const mapStateToProps = ({ appSettings, domain }) => ({
+  appSettings,
+  domain
+});
 
 const mapDispatchToProps = (dispatch) => ({
-  setCutoffTime: (time, appSettings) => setCutoffTime(time, appSettings, dispatch),
-  setOrderOptions: (newOptions, appSettings) => setOrderOptions(newOptions, appSettings, dispatch),
-  setUserFields: (newFields, appSettings) => setUserFields(newFields, appSettings, dispatch)
+  setCutoffTime: (time, domain) => setCutoffTime(time, dispatch, domain),
+  setOrderOptions: (newOptions, domain) => setOrderOptions(newOptions, dispatch, domain),
+  setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppSettings);
