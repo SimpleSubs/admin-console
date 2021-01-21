@@ -1,10 +1,11 @@
 import React from "react";
-import "../stylesheets/Login.css";
+import "../stylesheets/Login.scss";
 import { logIn } from "../redux/Actions";
 import { connect } from "react-redux";
 
 const NO_ERROR = " ";
 const EMAIL_REGEX = /^(([^<>()[\].,;:\s@"]+(\.[^<>()[\].,;:\s@"]+)*)|(".+"))@(([^<>()[\].,;:\s@"]+\.)+[^<>()[\].,;:\s@"]{2,})$/i;
+const LOGO_SVG = require("../assets/logo.svg");
 
 function getErrorMessage(code) {
   switch (code) {
@@ -51,6 +52,7 @@ const Login = ({ logIn }) => {
   return (
     <div id={"Login"} className={"container"}>
       <div className={"content-container"}>
+        <img className={"logo"} src={LOGO_SVG} alt={"SimpleSubs Logo"} />
         <h1>SimpleSubs Admin Console</h1>
         <p>Sign in below to get started</p>
         <form className={"login-form"} onSubmit={handleLogin}>

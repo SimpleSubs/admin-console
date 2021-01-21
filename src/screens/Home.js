@@ -1,5 +1,5 @@
 import React from "react";
-import "../stylesheets/Home.css";
+import "../stylesheets/Home.scss";
 import { Switch, Route, Link, useRouteMatch, Redirect, useLocation } from "react-router-dom";
 import Orders from "./Orders";
 import Users from "./Users";
@@ -11,7 +11,8 @@ const PAGES = [
   { title: "Orders", link: "orders" },
   { title: "Users", link: "users" },
   { title: "App Settings", link: "app-settings" }
-]
+];
+const LOGO_SVG = require("../assets/logo.svg");
 
 const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, isLoggedIn, domain }) => {
   const [navbarHeight, setHeight] = React.useState(0);
@@ -38,6 +39,7 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
     <>
       <header ref={navbar}>
         <div>
+          <img src={LOGO_SVG} alt={"SimpleSubs Logo"} />
           <h3>SimpleSubs Admin Console</h3>
         </div>
         <button className={"styled-button log-out"} onClick={logOut}>

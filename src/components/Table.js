@@ -5,7 +5,7 @@ import update from "immutability-helper";
 import Checkbox, { IndeterminateCheckbox } from "./Checkbox";
 import { TableTypes, ColumnSizes } from "../constants/TableActions";
 import { toReadable } from "../constants/Date";
-import "../stylesheets/Table.css";
+import "../stylesheets/Table.scss";
 import EditRowForm from "./EditRowForm";
 
 const PAGE_SIZE = 50;

@@ -1,5 +1,5 @@
-import React from 'react';
-import './stylesheets/App.css';
+import React from "react";
+import "./stylesheets/App.scss";
 import { BrowserRouter as Router } from "react-router-dom";
 import Navigator from "./navigation/Navigator";
 import { createStore } from "redux";

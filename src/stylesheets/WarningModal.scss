@@ -1,7 +1,7 @@
-@use "colors";
+@use "index";
 
 .warning-modal {
-  background-color: colors.$backgroundColor;
+  background-color: index.$backgroundColor;
   padding: 30px;
   max-width: 350px;
   border-radius: 20px;
@@ -16,10 +16,10 @@
       margin: 0 5px;
       &[type=button] {
         background-color: transparent;
-        border: 1px colors.$secondaryText solid;
-        color: colors.$secondaryText;
+        border: 1px index.$secondaryText solid;
+        color: index.$secondaryText;
         &:hover {
-          background-color: colors.$textInputColor;
+          background-color: index.$textInputColor;
         }
       }
     }

@@ -1,5 +1,5 @@
 import React from "react";
-import "../stylesheets/Hamburger.css";
+import "../stylesheets/Hamburger.scss";
 
 const HamburgerMenu = ({ actions, open, setOpen }) => {
   const menuRef = React.useRef();

@@ -6,7 +6,7 @@ import { OrderOptionColumns, UserFieldColumns } from "../constants/TableConstant
 import StyledButton from "../components/StyledButton";
 import { setCutoffTime, setUserFields, setOrderOptions } from "../redux/Actions";
 import Picker from "../components/Picker";
-import "../stylesheets/AppSettings.css";
+import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
 
 function toStateFormat(cutoffTime) {

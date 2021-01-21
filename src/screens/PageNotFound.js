@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import "../stylesheets/PageNotFound.css";
+import "../stylesheets/PageNotFound.scss";
 
 const DANCING_SANDWICH = require("../assets/dancing-sandwich.gif");
 

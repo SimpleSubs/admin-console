@@ -1,12 +1,11 @@
-@use "colors";
-@use "sass:color";
+@use "index";
 
 body * {
   display: flex;
   flex-direction: column;
   font-family: "Josefin Sans", Arial, sans-serif;
   box-sizing: border-box;
-  color: colors.$primaryText;
+  color: index.$primaryText;
 }
 
 script {
@@ -46,15 +45,15 @@ button {
   bottom: 20px;
   right: 20px;
   flex-direction: row;
-  background-color: colors.$loaderBackground;
-  color: colors.$textOnBackground;
+  background-color: index.$loaderBackground;
+  color: index.$textOnBackground;
   padding: 20px;
   font-weight: bold;
   font-size: 16px;
   border-radius: 3px;
   box-shadow: 0 0 5px 0 #000000ff;
   .fas {
-    color: colors.$textOnBackground;
+    color: index.$textOnBackground;
     margin-left: 15px;
     animation: spin 1s linear infinite;
   }
@@ -71,11 +70,11 @@ button {
   flex-direction: row;
   align-items: center;
   padding: 7px 10px;
-  background-color: colors.$accentColor;
+  background-color: index.$accentColor;
   border-radius: 5px;
   cursor: pointer;
   &:hover {
-    background-color: colors.$darkAccentColor;
+    background-color: index.$darkAccentColor;
   }
   .fas {
     margin-left: 10px;
@@ -84,7 +83,7 @@ button {
 
 .error {
   transition: all 0.2s ease;
-  color: colors.$errorText;
+  color: index.$errorText;
   margin: 0;
   &.hidden {
     opacity: 0;
@@ -96,11 +95,11 @@ form {
     border: none;
     padding: 15px;
     width: 100%;
-    background-color: colors.$textInputColor;
+    background-color: index.$textInputColor;
     border-radius: 5px;
     font-size: 16px;
     &::placeholder {
-      color: colors.$textInputText;
+      color: index.$textInputText;
     }
     &[disabled] {
       background-color: transparent;

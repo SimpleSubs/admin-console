@@ -1,6 +1,6 @@
 import React from "react";
 import { toISO, parseISO } from "../constants/Date";
-import "../stylesheets/Orders.css";
+import "../stylesheets/Orders.scss";
 import Table from "../components/Table";
 import { OrderColumns } from "../constants/TableConstants";
 import { TableTypes } from "../constants/TableActions";

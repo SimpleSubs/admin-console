@@ -1,4 +1,4 @@
-@use "colors";
+@use "index";
 @use "Table";
 
 .cutoffTime {
@@ -6,7 +6,7 @@
   border-radius: Table.$tableRadius;
   box-shadow: 0 0 10px 3px #0000002f;
   margin: 10px 0;
-  background-color: colors.$backgroundColor;
+  background-color: index.$backgroundColor;
   flex-direction: row;
   justify-content: space-between;
   align-items: start;

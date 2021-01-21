@@ -1,4 +1,4 @@
-@use "colors";
+@use "index";
 
 #Login {
   width: 100vw;
@@ -7,14 +7,18 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: colors.$backgroundColor;
+  background: index.$backgroundColor;
   .content-container {
     justify-content: center;
     max-width: 750px;
     display: flex;
     flex-direction: column;
-    background-color: colors.$backgroundColor !important;
+    background-color: index.$backgroundColor !important;
     text-align: center;
+    .logo {
+      width: 200px;
+      align-self: center;
+    }
   }
 }
 
@@ -28,7 +32,7 @@
     margin: 10px 0;
   }
   input[type=submit] {
-    color: colors.$textOnBackground;
+    color: index.$textOnBackground;
     justify-content: center;
     align-items: center;
     outline: none;

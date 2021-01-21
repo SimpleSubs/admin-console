@@ -1,7 +1,7 @@
 import React from "react";
 import Checkbox from "./Checkbox";
 import Picker from "./Picker";
-import "../stylesheets/EditRowForm.css";
+import "../stylesheets/EditRowForm.scss";
 import { TableTypes } from "../constants/TableActions";
 import moment from "moment";
 

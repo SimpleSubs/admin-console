@@ -1,4 +1,4 @@
-@use "colors";
+@use "index";
 
 .edit-row-form {
   background-color: #fff;
@@ -16,7 +16,7 @@
       font-weight: bold;
       margin-right: 15px;
       .asterisk {
-        color: colors.$errorText;
+        color: index.$errorText;
       }
     }
     .input-wrapper {
@@ -37,8 +37,8 @@
         margin-left: 10px;
         &.cancel {
           background-color: transparent;
-          border: 1px colors.$checkboxText solid !important;
-          color: colors.$checkboxText !important;
+          border: 1px index.$checkboxText solid !important;
+          color: index.$checkboxText !important;
         }
       }
     }

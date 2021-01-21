@@ -1,4 +1,4 @@
-@use "colors";
+@use "index";
 @use "sass:color";
 @use "Home";
 
@@ -9,12 +9,12 @@ table {
   border-radius: $tableRadius;
   box-shadow: 0 0 10px 3px #0000002f;
   margin: 10px 0;
-  background-color: colors.$backgroundColor;
+  background-color: index.$backgroundColor;
   tbody tr {
-    background-color: colors.$backgroundColor;
+    background-color: index.$backgroundColor;
     flex-direction: row;
     &:nth-child(even) {
-      background-color: colors.$scrollViewBackground;
+      background-color: index.$scrollViewBackground;
     }
     &:last-child {
       border-radius: 0 0 $tableRadius $tableRadius;
@@ -29,10 +29,10 @@ table {
     &.clickable {
       cursor: pointer;
       &:hover:nth-child(even) {
-        background-color: color.adjust(colors.$scrollViewBackground, $lightness: 2%);
+        background-color: color.adjust(index.$scrollViewBackground, $lightness: 2%);
       }
       &:hover:nth-child(odd) {
-        background-color: color.adjust(colors.$backgroundColor, $lightness: -2%);
+        background-color: color.adjust(index.$backgroundColor, $lightness: -2%);
       }
     }
   }
@@ -44,7 +44,7 @@ table {
     position: sticky;
     z-index: 10;
     top: -(Home.$contentContainerPadding) / 2;
-    background-color: colors.$backgroundColor;
+    background-color: index.$backgroundColor;
     border-top-left-radius: $tableRadius;
     border-top-right-radius: $tableRadius;
     tr {
@@ -54,7 +54,7 @@ table {
       }
       flex-direction: row;
       th {
-        background-color: colors.$backgroundColor;
+        background-color: index.$backgroundColor;
         border-radius: $tableRadius;
         font-size: 20px;
         flex-direction: row;
@@ -110,7 +110,7 @@ table {
         align-items: center;
         align-self: center;
         display: flex !important;
-        background-color: colors.$textInputColor;
+        background-color: index.$textInputColor;
         padding-left: 15px;
         border-radius: 5px;
         .fas {
@@ -125,7 +125,7 @@ table {
           background-color: transparent;
           font-size: 16px;
           &::placeholder {
-            color: colors.$textInputText;
+            color: index.$textInputText;
           }
         }
       }
@@ -134,7 +134,7 @@ table {
   tfoot {
     position: sticky;
     bottom: -10px;
-    background-color: colors.$backgroundColor;
+    background-color: index.$backgroundColor;
     border-radius: 0 0 5px 5px;
     box-shadow: 0 -3px 5px 0 #0000001f;
     .page-buttons {
@@ -146,15 +146,15 @@ table {
         padding: 10px;
         margin: 0 2px;
         cursor: pointer;
-        background-color: colors.$textInputColor;
+        background-color: index.$textInputColor;
         &:hover {
-          background-color: color.adjust(colors.$textInputColor, $lightness: -10%);
+          background-color: color.adjust(index.$textInputColor, $lightness: -10%);
         }
         &:disabled, &[disabled] {
           cursor: default;
           background-color: transparent;
           i {
-            color: colors.$secondaryText
+            color: index.$secondaryText
           }
         }
       }

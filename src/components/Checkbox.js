@@ -1,5 +1,5 @@
 import React from "react";
-import "../stylesheets/Checkbox.css";
+import "../stylesheets/Checkbox.scss";
 
 const Checkbox = React.forwardRef(({ onClick = () => {}, ...props }, ref) => (
   <label className={"checkbox bounce"}>
