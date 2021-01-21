@@ -54,7 +54,10 @@ const deleteUserData = async (uid) => {
 
 exports.checkIsAdmin = functions.https.onCall( async (data, context) => {
   let { uid } = await admin.auth().getUserByEmail(data.email).catch(throwError);
+  let domain = (await admin.firestore().collection("userDomains").doc(uid).get()).data().domain;
   let doc = await admin.firestore()
+    .collection("domains")
+    .doc(domain)
     .collection("userData")
     .doc(uid).get()
     .catch(throwError);
@@ -118,6 +121,23 @@ exports.resetPasswords = functions.https.onCall(async (data, context) => {
   }
 });
 
+exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
+  const uid = data.uid;
+  if (context.auth.uid !== uid) {
+    throwError({ code: "permission-denied", message: "You must be logged into the account to delete it." });
+  }
+  try {
+    let doc = await admin.firestore().collection("userDomains").doc(uid).get();
+    if (doc.exists && doc.data().domain) {
+      throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." })
+    }
+    await admin.auth().deleteUser(uid);
+    await deleteUserData(uid);
+  } catch (e) {
+    throwError(e);
+  }
+})
+
 // const migrateCollection = async (srcCollection, destCollection, data = (doc) => doc, deleteAfter = false, condition = null) => {
 //   const documents = await srcCollection.get();
 //   let writeBatch = admin.firestore().batch();
@@ -159,7 +179,7 @@ exports.resetPasswords = functions.https.onCall(async (data, context) => {
 //     console.log("Number of operations: " + i);
 //   }
 // }
-//
+
 // exports.migrateToDomains = functions.https.onCall(async (data, context) => {
 //   const lwhsCollection = admin.firestore().collection("domains").doc("lwhs").collection("userData");
 //   const userDataCollection = admin.firestore().collection("userData");
@@ -172,11 +192,26 @@ exports.resetPasswords = functions.https.onCall(async (data, context) => {
 //   }
 // });
 //
-// exports.migrateToAnalytics = functions.https.onCall(async (data, context) => {
-//   const ordersCollection = admin.firestore().collection("allOrders");
-//   const analyticsCollection = admin.firestore().collection("domains").doc("lwhs").collection("pastOrders");
-//   await migrateCollection(ordersCollection, analyticsCollection, null, true);
+// exports.manualMigrate = functions.https.onCall(async (data, context) => {
+//   const srcCollection = admin.firestore().collection("allOrders").where("date", ">", "2021-01-20");
+//   const targetCollection = admin.firestore().collection("domains").doc("lwhs").collection("orders");
+//   await migrateCollection(srcCollection, targetCollection);
 // });
+
+exports.migrateToDomain = functions.firestore
+  .document("allOrders/{order}")
+  .onWrite(async (change, context) => {
+    const targetCollection = admin.firestore().collection("domains").doc("lwhs").collection("orders");
+    const data = change.after.exists ? change.after.data() : null;
+    if (!data) {
+      await targetCollection.doc(context.params.order).delete();
+      console.log("Deleted order " + context.params.order);
+    } else {
+      await targetCollection.doc(context.params.order).set(data);
+      console.log("Updated order " + context.params.order);
+    }
+  });
+
 //
 // exports.migrateToExample = functions.https.onCall(async (data, context) => {
 //   const lwhsCollection = admin.firestore().collection("domains)").doc("example").collection("userData");
