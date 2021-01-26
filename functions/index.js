@@ -212,6 +212,18 @@ exports.migrateToDomain = functions.firestore
     }
   });
 
+exports.updateDomainData = functions.https.onCall(async (data, context) => {
+  const domain = await checkAuth(context.auth);
+  if (domain !== data.id) {
+    throwError({ code: "permission-denied", message: "You may only edit data for your own organization." });
+  }
+  try {
+    await admin.firestore().collection("domains").doc(data.id).set(data.data);
+  } catch (e) {
+    throwError(e);
+  }
+});
+
 //
 // exports.migrateToExample = functions.https.onCall(async (data, context) => {
 //   const lwhsCollection = admin.firestore().collection("domains)").doc("example").collection("userData");

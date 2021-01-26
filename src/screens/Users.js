@@ -86,7 +86,7 @@ const mapStateToProps = ({ users, appSettings, user, domain }) => ({
   users,
   userFields: appSettings?.userFields ? [UserColumns[0], ...appSettings.userFields, UserColumns[1]] : null,
   user,
-  domain
+  domain: domain.id
 });
 
 const mapDispatchToProps = (dispatch) => ({

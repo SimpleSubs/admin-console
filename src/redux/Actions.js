@@ -6,7 +6,8 @@ import {
   deleteUsersFunction,
   setEmail,
   resetPasswordsFunction,
-  listAllUsers
+  listAllUsers,
+  updateDomainData
 } from "../constants/Firebase";
 import { parseISO } from "../constants/Date";
 import moment from "moment";
@@ -71,12 +72,12 @@ export function setLoading(loading) {
   }
 }
 
-async function getDomain(uid, dispatch) {
+async function getDomainId(uid, dispatch) {
   try {
-    let domain = (await firestore.collection("userDomains").doc(uid).get()).data().domain;
-    dispatch(setDomain(domain));
+    let domainId = (await firestore.collection("userDomains").doc(uid).get()).data().domain;
+    dispatch(setDomain({ id: domainId }));
   } catch (error) {
-    reportError(error, dispatch);
+    reportError(error, dispatch)
   }
 }
 
@@ -192,6 +193,15 @@ export function setUserFields(newFields, dispatch, domain) {
     }).catch((error) => reportError(error, dispatch));
 }
 
+export function setDomainData(data, dispatch, domainId) {
+  dispatch(setLoading(true));
+  updateDomainData(domainId, data)
+    .then(() => {
+      console.log("Successfully updated organization data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
 export function orderListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
   return domainData(domain).collection("orders")
@@ -264,10 +274,17 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
     })
 }
 
+export function domainListener(dispatch, isLoggedIn, domainId) {
+  if (!isLoggedIn) return;
+  return domainData(domainId).onSnapshot((doc) => {
+    dispatch(setDomain({ id: domainId, ...doc.data() }));
+  })
+}
+
 export function authListener(dispatch) {
   return auth.onAuthStateChanged((user) => {
     if (user) {
-      getDomain(user.uid, dispatch).then(() => dispatch(setUserData({})));
+      getDomainId(user.uid, dispatch).then(() => dispatch(setUserData({})));
     } else {
       dispatch(setUserData(null));
       setDomain(null);
