@@ -187,7 +187,7 @@ const mapStateToProps = ({ orders, appSettings, users, domain }) => ({
     ...(appSettings.orderOptions || [])
   ] : null,
   users,
-  domain,
+  domain: domain.id,
   userFields: appSettings?.userFields
 });
 

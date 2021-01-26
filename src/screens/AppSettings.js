@@ -3,8 +3,10 @@ import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
 import { OrderOptionColumns, UserFieldColumns } from "../constants/TableConstants";
+import DomainFields from "../constants/DomainFields";
+import SettingsForm from "../components/SettingsForm";
 import StyledButton from "../components/StyledButton";
-import { setCutoffTime, setUserFields, setOrderOptions } from "../redux/Actions";
+import { setCutoffTime, setUserFields, setOrderOptions, setDomainData } from "../redux/Actions";
 import Picker from "../components/Picker";
 import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
@@ -22,6 +24,17 @@ function toStateFormat(cutoffTime) {
   }
   return { hours, minutes, isAM };
 }
+
+const DomainForm = ({ domain, setDomainData }) => (
+  <SettingsForm
+    data={domain}
+    onSubmit={setDomainData}
+    title={"Organization Information"}
+    prevData={domain}
+    fields={DomainFields}
+    id={"domain-form"}
+  />
+);
 
 const CutoffTime = ({ cutoffTime, setCutoffTime }) => {
   const [showError, toggleError] = React.useState(false);
@@ -55,8 +68,8 @@ const CutoffTime = ({ cutoffTime, setCutoffTime }) => {
   React.useEffect(() => setState(toStateFormat(cutoffTime)), [cutoffTime]);
 
   return (
-    <div className={"cutoffTime"}>
-      <p>Cutoff Time</p>
+    <div className={"cutoff-time single-row-setting"}>
+      <h3 className={"title"}>Cutoff Time</h3>
       <div className={"form-wrapper"}>
         <form onSubmit={submit}>
           <label>
@@ -184,13 +197,14 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
-      <CutoffTime cutoffTime={appSettings.cutoffTime} setCutoffTime={(time) => setCutoffTime(time, domain)} />
-      <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain)} />
-      <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain)} />
+      <DomainForm domain={domain} setDomainData={(data) => setDomainData(data, domain.id)} />
+      <CutoffTime cutoffTime={appSettings.cutoffTime} setCutoffTime={(time) => setCutoffTime(time, domain.id)} />
+      <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain.id)} />
+      <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain.id)} />
     </div>
 );
 
@@ -202,7 +216,8 @@ const mapStateToProps = ({ appSettings, domain }) => ({
 const mapDispatchToProps = (dispatch) => ({
   setCutoffTime: (time, domain) => setCutoffTime(time, dispatch, domain),
   setOrderOptions: (newOptions, domain) => setOrderOptions(newOptions, dispatch, domain),
-  setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain)
+  setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain),
+  setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppSettings);

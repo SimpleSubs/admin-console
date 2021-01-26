@@ -1,8 +1,25 @@
 @use "index";
 @use "Table";
 
-.cutoffTime {
-  border-collapse: collapse;
+.setting-form {
+  box-shadow: 0 0 10px 3px #0000002f;
+  margin: 10px 0;
+  padding: 30px;
+  background-color: index.$backgroundColor;
+  &, & > form {
+    border-radius: Table.$tableRadius;
+  }
+  form {
+    padding: 0;
+    margin-top: 25px;
+  }
+  h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+}
+
+.single-row-setting {
   border-radius: Table.$tableRadius;
   box-shadow: 0 0 10px 3px #0000002f;
   margin: 10px 0;
@@ -10,11 +27,22 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: start;
-  padding: 30px 30px 10px 30px;
-  & > p {
+  padding: 30px;
+  h3 {
+    align-self: center;
+    font-size: 20px;
+  }
+  .title {
     flex: 1;
     font-size: 20px;
     font-weight: bold;
+  }
+}
+
+.cutoff-time {
+  padding: 30px 30px 10px 30px;
+  .title {
+    align-self: flex-start;
   }
   .form-wrapper {
     form {

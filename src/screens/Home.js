@@ -5,7 +5,14 @@ import Orders from "./Orders";
 import Users from "./Users";
 import AppSettings from "./AppSettings";
 import { connect } from "react-redux";
-import { appSettingsListener, logOut, orderListener, userDataListener, usersListener } from "../redux/Actions";
+import {
+  appSettingsListener,
+  domainListener,
+  logOut,
+  orderListener,
+  userDataListener,
+  usersListener
+} from "../redux/Actions";
 
 const PAGES = [
   { title: "Orders", link: "orders" },
@@ -14,7 +21,7 @@ const PAGES = [
 ];
 const LOGO_SVG = require("../assets/logo.svg");
 
-const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, isLoggedIn, domain }) => {
+const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, domainListener, isLoggedIn, domain }) => {
   const [navbarHeight, setHeight] = React.useState(0);
   const [pageIndex, setPageIndex] = React.useState(0);
   const { path, url } = useRouteMatch();
@@ -34,6 +41,7 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
   React.useEffect(() => orderListener(isLoggedIn, domain), [orderListener, domain, isLoggedIn]);
   React.useEffect(() => usersListener(isLoggedIn, domain), [usersListener, domain, isLoggedIn]);
   React.useEffect(() => appSettingsListener(isLoggedIn, domain), [appSettingsListener, domain, isLoggedIn]);
+  React.useEffect(() => domainListener(isLoggedIn, domain), [domainListener, domain, isLoggedIn]);
 
   return (
     <>
@@ -79,7 +87,7 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
 
 const mapStateToProps = ({ user, domain }) => ({
   isLoggedIn: !!user,
-  domain
+  domain: domain.id
 });
 
 const mapDispatchToProps = (dispatch) => ({
@@ -87,7 +95,8 @@ const mapDispatchToProps = (dispatch) => ({
   userDataListener: (uid, domain) => userDataListener(dispatch, uid, domain),
   orderListener: (isLoggedIn, domain) => orderListener(dispatch, isLoggedIn, domain),
   usersListener: (isLoggedIn, domain) => usersListener(dispatch, isLoggedIn, domain),
-  appSettingsListener: (isLoggedIn, domain) => appSettingsListener(dispatch, isLoggedIn, domain)
+  appSettingsListener: (isLoggedIn, domain) => appSettingsListener(dispatch, isLoggedIn, domain),
+  domainListener: (isLoggedIn, domainId) => domainListener(dispatch, isLoggedIn, domainId)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(Home);
