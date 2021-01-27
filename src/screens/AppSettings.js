@@ -2,11 +2,11 @@ import React from "react";
 import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
-import { OrderOptionColumns, UserFieldColumns } from "../constants/TableConstants";
+import { OrderOptionColumns, UserFieldColumns, PasswordField } from "../constants/TableConstants";
 import DomainFields from "../constants/DomainFields";
 import SettingsForm from "../components/SettingsForm";
 import StyledButton from "../components/StyledButton";
-import { setCutoffTime, setUserFields, setOrderOptions, setDomainData } from "../redux/Actions";
+import { setCutoffTime, setUserFields, setOrderOptions, setDomainData, setDefaultUser } from "../redux/Actions";
 import Picker from "../components/Picker";
 import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
@@ -30,11 +30,24 @@ const DomainForm = ({ domain, setDomainData }) => (
     data={domain}
     onSubmit={setDomainData}
     title={"Organization Information"}
-    prevData={domain}
     fields={DomainFields}
     id={"domain-form"}
   />
 );
+
+const DefaultUserForm = ({ userFields, defaultUser, setDefaultUser }) => {
+  const processedFields = userFields.map((field) => ({ ...field, type: field.inputType, required: false }));
+  return (
+  <SettingsForm
+    data={defaultUser}
+    onSubmit={setDefaultUser}
+    title={"Default User"}
+    fields={[PasswordField, ...processedFields]}
+    id={"default-user-form"}
+    checkRequired={false}
+  />
+)
+}
 
 const CutoffTime = ({ cutoffTime, setCutoffTime }) => {
   const [showError, toggleError] = React.useState(false);
@@ -197,11 +210,12 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData, setDefaultUser }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
       <DomainForm domain={domain} setDomainData={(data) => setDomainData(data, domain.id)} />
+      <DefaultUserForm defaultUser={appSettings.defaultUser} userFields={appSettings.userFields} setDefaultUser={(data) => setDefaultUser(data, domain.id)} />
       <CutoffTime cutoffTime={appSettings.cutoffTime} setCutoffTime={(time) => setCutoffTime(time, domain.id)} />
       <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain.id)} />
       <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain.id)} />
@@ -217,7 +231,8 @@ const mapDispatchToProps = (dispatch) => ({
   setCutoffTime: (time, domain) => setCutoffTime(time, dispatch, domain),
   setOrderOptions: (newOptions, domain) => setOrderOptions(newOptions, dispatch, domain),
   setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain),
-  setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId)
+  setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId),
+  setDefaultUser: (data, domain) => setDefaultUser(data, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppSettings);

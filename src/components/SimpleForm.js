@@ -25,7 +25,11 @@ function validate(fields, state) {
   for (let field of fields) {
     let type = field.type === TableTypes.CONDITIONAL ? field.condition(state) : field.type;
     let value = state[field.key];
-    if (isRequired(field.required, state) && type !== TableTypes.HIDDEN && (!value || (value.length && value.length === 0))) {
+    if (
+      isRequired(field.required, state)
+      && type !== TableTypes.HIDDEN
+      && (!value || (value.length && value.length === 0))
+    ) {
       return false;
     }
   }
@@ -50,6 +54,9 @@ function getKey() {
 function processState(data, fields, key) {
   let processedData = {};
   for (let field of fields) {
+    if (field.key === "key") {
+      continue;
+    }
     let value = data[field.key];
     let type = field.type === TableTypes.CONDITIONAL ? field.condition(data) : field.type;
     let required = isRequired(field.required, data);
@@ -191,6 +198,7 @@ const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParam
   const submit = (e) => {
     e.preventDefault();
     let processedState = processState(state, fields, prevData.key);
+    console.log(processedState);
     if (!validate(fields, processedState)) {
       setError(true);
       return;

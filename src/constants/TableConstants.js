@@ -58,6 +58,15 @@ const sortDate = (rowA, rowB, columnId) => {
   }
 }
 
+export const PasswordField = {
+  key: "password",
+  type: "TEXT_INPUT",
+  placeholder: "Default password",
+  required: true,
+  textType: "PASSWORD",
+  title: "Default Password"
+}
+
 export const OrderOptionColumns = [
   { key: "title", title: "Title", type: TableTypes.TEXT, required: true },
   { key: "type", title: "Input Type", type: TableTypes.PICKER, options: Object.keys(InputTypes), displayValue: (value) => InputTypes[value], required: true },
