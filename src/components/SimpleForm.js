@@ -1,6 +1,7 @@
 import React from "react";
 import Checkbox from "./Checkbox";
 import Picker from "./Picker";
+import CheckboxList from "./CheckboxList";
 import "../stylesheets/Forms.scss";
 import { TableTypes } from "../constants/TableActions";
 import moment from "moment";
@@ -36,22 +37,11 @@ function validate(fields, state) {
   return true;
 }
 
-function editData(data, fields) {
-  let fixedData = {...data};
-  for (let field of fields) {
-    let type = field.type === TableTypes.CONDITIONAL ? field.condition(data) : field.type;
-    if (type === TableTypes.ARRAY && data[field.key]) {
-      fixedData[field.key] = data[field.key].join(", ");
-    }
-  }
-  return fixedData;
-}
-
 function getKey() {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-function processState(data, fields, key) {
+function processState(data, fields, key, custom) {
   let processedData = {};
   for (let field of fields) {
     if (field.key === "key") {
@@ -62,10 +52,14 @@ function processState(data, fields, key) {
     let required = isRequired(field.required, data);
     switch (type) {
       case TableTypes.ARRAY:
-        if (value && value.length > 0) {
-          value = value.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+        if (custom) {
+          if (value && value.length > 0) {
+            value = value.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+          } else {
+            value = field.defaultValue || [];
+          }
         } else {
-          value = field.defaultValue || [];
+          value = value || [];
         }
         break;
       case TableTypes.BOOLEAN:
@@ -93,7 +87,7 @@ function processState(data, fields, key) {
   return processedData;
 }
 
-const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue, extraParams, prevData, editable = true, defaultValue, restrictedOptions = () => [] }) => {
+const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue, extraParams, prevData, editable = true, defaultValue, custom, restrictedOptions = () => [] }) => {
   const disabled = !isEditable(editable, value, prevData, extraParams);
   switch (type) {
     case TableTypes.TEXT:
@@ -104,7 +98,7 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
           id={`${id}-${fieldKey}`}
           name={fieldKey}
           value={value || defaultValue || ""}
-          onChange={setValue}
+          onChange={(e) => setValue(e.target.value)}
           disabled={disabled}
         />
       );
@@ -115,23 +109,34 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
           id={`${id}-${fieldKey}`}
           name={fieldKey}
           value={value || defaultValue || ""}
-          onChange={setValue}
+          onChange={(e) => setValue(e.target.value)}
           min={moment().format("YYYY-MM-DD")}
           disabled={disabled}
         />
       )
     case TableTypes.ARRAY:
-      return (
-        <input
-          type={"text"}
-          placeholder={"Enter comma-separated values"}
-          id={`${id}-${fieldKey}`}
-          name={fieldKey}
-          value={value || defaultValue?.join(", ") || ""}
-          onChange={setValue}
-          disabled={disabled}
-        />
-      );
+      if (custom) {
+        return (
+          <input
+            type={"text"}
+            placeholder={"Enter comma-separated values"}
+            id={`${id}-${fieldKey}`}
+            name={fieldKey}
+            value={value?.join(", ") || defaultValue?.join(", ") || ""}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={disabled}
+          />
+        );
+      } else {
+        return (
+          <CheckboxList
+            id={`${id}-${fieldKey}`}
+            checkedValues={value || []}
+            options={options}
+            onChange={setValue}
+          />
+        )
+      }
     case TableTypes.PICKER:
       const restricted = restrictedOptions(extraParams);
       return (
@@ -139,7 +144,7 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
           name={fieldKey}
           id={`${id}-${fieldKey}`}
           value={options.includes(value) ? value : (options.includes(defaultValue) ? defaultValue : "DEFAULT")}
-          onChange={setValue}
+          onChange={(e) => setValue(e.target.value)}
           disabled={disabled}
         >
           <option disabled value={"DEFAULT"}> -- select an option -- </option>
@@ -151,37 +156,54 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
         </Picker>
       );
     case TableTypes.BOOLEAN:
-      return <Checkbox onChange={setValue} disabled={disabled} checked={value || defaultValue || false} />;
+      return (
+        <Checkbox
+          onChange={(e) => setValue(e.target.checked)}
+          disabled={disabled}
+          checked={value || defaultValue || false}
+        />
+      );
     default:
       return null;
   }
 };
 
-const FormRow = ({ fieldKey, title, type, condition, state, setState, required, ...props }) => {
+const VariableLabel = ({ isCheckboxList, children }) => (
+  isCheckboxList
+    ? <div className={"align-top"}>{children}</div>
+    : <label>{children}</label>
+);
+
+const FormRow = ({ fieldKey, title, type, condition, state, setState, required, custom, ...props }) => {
   const finalType = type === TableTypes.CONDITIONAL ? condition(state) : type;
-  const setValue = (event) => setState({ [fieldKey]: event.target[
-      finalType === TableTypes.BOOLEAN ? "checked" : "value"
-      ]});
+  const setValue = (value) => setState({ [fieldKey]: value });
   if (finalType === TableTypes.HIDDEN) {
     return null;
   }
   return (
     <>
-      <label>
+      <VariableLabel isCheckboxList={!custom && type === TableTypes.ARRAY}>
         <span>
           {title}
           {isRequired(required, state) && <span className={"asterisk"}>*</span>}
         </span>
         <div className={"input-wrapper"}>
-          <FormInput {...props} type={finalType} setValue={setValue} value={state[fieldKey]} fieldKey={fieldKey} />
+          <FormInput
+            {...props}
+            custom={custom}
+            type={finalType}
+            setValue={setValue}
+            value={state[fieldKey]}
+            fieldKey={fieldKey}
+          />
         </div>
-      </label>
+      </VariableLabel>
       <br />
     </>
   );
 };
 
-const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParams = {}, buttonTitles = {}, onCancel = () => {}, className = "", ...props }) => {
+const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParams = {}, buttonTitles = {}, onCancel = () => {}, className = "", custom = false, ...props }) => {
   const [state, setFullState] = React.useState(prevData);
   const [error, setError] = React.useState(false);
 
@@ -197,8 +219,7 @@ const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParam
 
   const submit = (e) => {
     e.preventDefault();
-    let processedState = processState(state, fields, prevData.key);
-    console.log(processedState);
+    let processedState = processState(state, fields, prevData.key, custom);
     if (!validate(fields, processedState)) {
       setError(true);
       return;
@@ -207,7 +228,7 @@ const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParam
     onSubmit(processedState);
   };
 
-  React.useEffect(() => setFullState(editData(prevData, fields)), [prevData, fields]);
+  React.useEffect(() => setFullState(prevData), [prevData]);
 
   return (
     <form
@@ -225,6 +246,7 @@ const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParam
           setState={setState}
           extraParams={extraParams}
           prevData={prevData}
+          custom={custom}
         />
       ))}
       <div className={"footer"}>
