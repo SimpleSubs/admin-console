@@ -2,7 +2,7 @@ import React from "react";
 import "../stylesheets/Forms.scss";
 import SimpleForm from "./SimpleForm";
 
-const EditRowForm = ({ fields, id, prevData = {}, onSubmit = () => {}, open, closeModal, unfocusRow, custom, extraParams = {} }) => {
+const EditRowForm = ({ fields, id, prevData = {}, onSubmit = () => {}, open, closeModal, unfocusRow, custom, extraParams = {}, editing }) => {
   const [state, setState] = React.useState(prevData);
   const openRef = React.useRef(false);
 
@@ -34,6 +34,7 @@ const EditRowForm = ({ fields, id, prevData = {}, onSubmit = () => {}, open, clo
         extraParams={extraParams}
         buttonTitles={{ cancel: "Cancel", done: "Done" }}
         onCancel={cancel}
+        custom={custom}
       />
     </div>
   );

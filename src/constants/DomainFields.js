@@ -4,6 +4,7 @@ const DomainFields = [
   {
     key: "name",
     title: "Name",
+    required: true,
     editable: true,
     type: TableTypes.TEXT,
     textType: "PLAIN"
@@ -11,6 +12,7 @@ const DomainFields = [
   {
     key: "code",
     title: "Code",
+    required: true,
     editable: false,
     type: TableTypes.TEXT,
     textType: "PLAIN"

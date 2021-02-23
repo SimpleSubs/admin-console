@@ -54,7 +54,12 @@ function updateUsers(users) {
 function updateAppSettings(appSettings) {
   return {
     type: Actions.UPDATE_APP_SETTINGS,
-    appSettings
+    appSettings: {
+      cutoffTime: appSettings.cutoffTime || { hours: 0, minutes: 0 },
+      defaultUser: appSettings.defaultUser || {},
+      orderOptions: appSettings.orderOptions || [],
+      userFields: appSettings.userFields || []
+    }
   }
 }
 
@@ -122,8 +127,10 @@ export function deleteUsers(uidsToDelete, myUid, dispatch) {
 
 export function updateOrder(id, order, dispatch, domain) {
   dispatch(setLoading(true));
+  let dataToPush = { ...order };
+  delete dataToPush.user;
   domainData(domain).collection("orders").doc(id)
-    .set(order)
+    .set(dataToPush)
     .then(() => {
       console.log("Successfully updated order");
       dispatch(setLoading(false));
@@ -150,7 +157,10 @@ export async function updateUser(uid, userData, prevUserData, dispatch, domain) 
     }
   }
   try {
-    await domainData(domain).collection("userData").doc(uid).set(userData);
+    let dataToPush = { ...userData };
+    delete dataToPush.email;
+    delete dataToPush.uid;
+    await domainData(domain).collection("userData").doc(uid).set(dataToPush);
     console.log("Successfully updated user data.");
     dispatch(setLoading(false));
   } catch (e) {
@@ -198,6 +208,15 @@ export function setDomainData(data, dispatch, domainId) {
   updateDomainData(domainId, data)
     .then(() => {
       console.log("Successfully updated organization data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function setDefaultUser(data, dispatch, domain) {
+  dispatch(setLoading(true));
+  domainData(domain).collection("appData").doc("defaultUser").set(data)
+    .then(() => {
+      console.log("Successfully updated default user data");
       dispatch(setLoading(false));
     }).catch((error) => reportError(error, dispatch));
 }
@@ -257,14 +276,8 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
     .onSnapshot((querySnapshot) => {
       dispatch(setLoading(true));
       let appSettings = {};
-      if (querySnapshot.empty) {
-        setCutoffTime({ hours: 0, minutes: 0 }, dispatch, domain);
-        setOrderOptions([], dispatch, domain);
-        setUserFields([], dispatch, domain);
-        return;
-      }
       querySnapshot.forEach((doc) => {
-        if (doc.id === "cutoffTime") {
+        if (doc.id === "cutoffTime" || doc.id === "defaultUser") {
           appSettings[doc.id] = doc.data();
         } else {
           appSettings[doc.id] = Object.values(doc.data());

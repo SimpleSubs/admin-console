@@ -3,7 +3,7 @@
 .simple-form {
   background-color: index.$backgroundColor;
   padding: 40px;
-  label {
+  label, .align-top {
     flex-direction: row;
     span {
       flex: 1;
@@ -21,6 +21,10 @@
     .checkbox {
       margin: 15px 0;
     }
+  }
+  .align-top span {
+    align-items: flex-start;
+    padding: 20px 0;
   }
   .footer {
     flex-direction: row;
@@ -72,4 +76,21 @@
   max-width: 800px;
   max-height: 90vh;
   border-radius: 20px;
+}
+
+.checkbox-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  .checkbox-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    width: 156px;
+    .checkbox {
+      margin-right: 10px;
+      flex: 0;
+    }
+  }
 }

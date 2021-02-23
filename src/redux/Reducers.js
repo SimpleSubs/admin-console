@@ -47,6 +47,6 @@ const consoleApp = combineReducers({
   domain,
   loading,
   hasAuthenticated
-})
+});
 
 export default consoleApp;

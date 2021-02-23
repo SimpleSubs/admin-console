@@ -58,6 +58,15 @@ const sortDate = (rowA, rowB, columnId) => {
   }
 }
 
+export const PasswordField = {
+  key: "password",
+  type: "TEXT_INPUT",
+  placeholder: "Default password",
+  required: true,
+  textType: "PASSWORD",
+  title: "Default Password"
+}
+
 export const OrderOptionColumns = [
   { key: "title", title: "Title", type: TableTypes.TEXT, required: true },
   { key: "type", title: "Input Type", type: TableTypes.PICKER, options: Object.keys(InputTypes), displayValue: (value) => InputTypes[value], required: true },
@@ -72,7 +81,8 @@ export const UserFieldColumns = [
   { key: "textType", title: "Text Type", type: TableTypes.CONDITIONAL, condition: getTextTypeType, options: Object.keys(TextTypes), displayValue: (value) => TextTypes[value], required: true },
   { key: "options", title: "Options", type: TableTypes.CONDITIONAL, condition: getOptionsType, required: true },
   { key: "placeholder", title: "Placeholder", type: TableTypes.CONDITIONAL, condition: getPlaceholderType, required: ({ inputType }) => inputType === "TEXT_INPUT" },
-  { key: "mutable", title: "Mutable", type: TableTypes.BOOLEAN, required: false }
+  { key: "mutable", title: "Mutable", type: TableTypes.BOOLEAN, required: false },
+  { key: "required", title: "Required", type: TableTypes.BOOLEAN, required: false }
 ];
 
 export const OrderColumns = [

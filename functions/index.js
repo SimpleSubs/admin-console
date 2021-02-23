@@ -108,11 +108,13 @@ exports.setEmail = functions.https.onCall(async (data, context) => {
 });
 
 exports.resetPasswords = functions.https.onCall(async (data, context) => {
-  await checkAuth(context.auth, data.uids);
-  let uids = data.uids;
-  let doc = await admin.firestore().collection("appData").doc("defaultUser").get().catch(throwError);
-  let password = doc.data().password;
+  const domain = await checkAuth(context.auth, data.uids);
   try {
+    let doc = await admin.firestore().collection("domains").doc(domain)
+      .collection("appData").doc("defaultUser")
+      .get();
+    let password = doc.data().password;
+    let uids = data.uids;
     await Promise.all(uids.map((uid) => admin.auth().updateUser(uid, { password })));
     console.log("Successfully reset " + uids.length + " passwords to '" + password + "'.");
     return password;
