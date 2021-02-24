@@ -5,50 +5,41 @@ import { connect } from "react-redux";
 import { deleteUsers, resetPasswords, updateUser } from "../redux/Actions";
 import Loading from "./Loading";
 import { UserColumns } from "../constants/TableConstants";
-import WarningModal from "../components/WarningModal";
 
 const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswords, updateUser, domain }) => {
   const userData = React.useMemo(
     () => (users && userFields) ? Object.keys(users).map((uid) => ({ ...users[uid], uid })) : null,
-    [userFields, users]);
+    [userFields, users]
+  );
   const columns = React.useMemo(
     () => userFields ? userFields.map((field) => ({...field, type: field.inputType})) : null,
     [userFields]
   );
-  const [deleteWarningOpen, setDeleteWarningOpen] = React.useState(false);
-  const [resetWarningOpen, setResetWarningOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState({});
 
   if (!userData) {
     return <Loading />
   }
-  const deleteSelected = () => {
+  const deleteSelected = (selected) => {
     deleteUsers(Object.keys(selected).map((index) => userData[index].uid), user.uid);
   };
-  const resetSelected = () => {
+  const resetSelected = (selected) => {
     resetPasswords(Object.keys(selected).map((index) => userData[index].uid));
   }
   const MenuButtons = {
-    Right: ({ selected }) => (
+    Right: ({ selected, setCarefulSubmit }) => (
       <HamburgerButton
         selected={selected}
         actions={(anySelected = false) => {
           let actions = [
             {
               title: `Reset ${anySelected ? "selected" : "all"} passwords`,
-              action: () => {
-                setSelected(selected);
-                setResetWarningOpen(true);
-              }
+              action: () => setCarefulSubmit(() => () => resetSelected(selected))
             }
           ];
           if (anySelected) {
             actions.push({
               title: "Delete selected users",
-              action: () => {
-                setSelected(selected);
-                setDeleteWarningOpen(true);
-              }
+              action: () => setCarefulSubmit(() => () => deleteSelected(selected))
             });
           }
           return actions;
@@ -66,8 +57,6 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
 
   return (
     <div id={"Users"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
-      <WarningModal open={deleteWarningOpen} onSubmit={deleteSelected} closeModal={() => setDeleteWarningOpen(false)} />
-      <WarningModal open={resetWarningOpen} onSubmit={resetSelected} closeModal={() => setResetWarningOpen(false)} />
       <Table
         data={userData}
         columns={columns}
