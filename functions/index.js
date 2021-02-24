@@ -2,6 +2,14 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
+const userDataCollection = (domain, uid) => (
+  admin.firestore()
+    .collection("domains")
+    .doc(domain)
+    .collection("userData")
+    .doc(uid)
+);
+
 const throwError = (error) => {
   console.error(error);
   throw new functions.https.HttpsError(error.code, error.message);
@@ -9,12 +17,7 @@ const throwError = (error) => {
 
 const isAdmin = async (uid) => {
   let domain = (await admin.firestore().collection("userDomains").doc(uid).get()).data().domain;
-  let doc = await admin.firestore()
-    .collection("domains")
-    .doc(domain)
-    .collection("userData")
-    .doc(uid).get()
-    .catch(throwError);
+  let doc = await userDataCollection(domain, uid).get().catch(throwError);
   if (!doc.exists || !(doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN")) {
     throwError({ code: "permission-denied", message: "User is not an admin" });
   } else {
@@ -47,26 +50,51 @@ const checkAuth = async (auth, uids) => {
   return domain;
 };
 
-const deleteUserData = async (uid) => {
-  await admin.firestore().collection("userData").doc(uid).delete().catch(throwError);
-  console.log("Successfully deleted user data for " + uid);
+const batchWrite = async (refs, action, extraData = {}) => {
+  const maxWrites = 400; // write batch only allows maximum 500 writes per batch
+  let batch = admin.firestore().batch();
+  let i = 0;
+  let rounds = 0;
+  try {
+    for (const ref of refs) {
+      action(batch, ref, extraData);
+      i++
+      if (i >= maxWrites) {
+        i = 0;
+        rounds++;
+        console.log("Intermediate committing of batch operation");
+        await batch.commit();
+        batch = admin.firestore().batch();
+      }
+    }
+    if (i > 0) {
+      console.log("Firebase batch operation completed. Doing final committing of batch operation.");
+      await batch.commit();
+    } else {
+      console.log("Firebase batch operation completed.");
+    }
+  } catch (e) {
+    console.log("Number of operations: " + (i + rounds * maxWrites));
+    throwError(e);
+  }
+}
+
+const deleteUserData = async (uids, domain, errorIndexes) => {
+  let uidsToDelete = uids.filter((value, i) => !errorIndexes.includes(i));
+  let refsToDelete = uidsToDelete.map((uid) => userDataCollection(domain, uid));
+  await batchWrite(refsToDelete, (batch, ref) => batch.delete(ref));
 }
 
 exports.checkIsAdmin = functions.https.onCall( async (data, context) => {
   let { uid } = await admin.auth().getUserByEmail(data.email).catch(throwError);
   let domain = (await admin.firestore().collection("userDomains").doc(uid).get()).data().domain;
-  let doc = await admin.firestore()
-    .collection("domains")
-    .doc(domain)
-    .collection("userData")
-    .doc(uid).get()
-    .catch(throwError);
+  let doc = await userDataCollection(domain, uid).get().catch(throwError);
   return doc.exists && (doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN");
 });
 
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
   let uids = data.uids;
-  await checkAuth(context.auth, uids);
+  let domain = await checkAuth(context.auth, uids);
   let deleteUsersResult = await admin.auth().deleteUsers(uids).catch(throwError);
   console.log("Successfully deleted " + deleteUsersResult.successCount + " users");
   console.log("Failed to delete " +  deleteUsersResult.failureCount + " users");
@@ -74,15 +102,7 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
     console.error(error);
   });
   let errorIndexes = deleteUsersResult.errors.map(({ index }) => index);
-  for (let i = 0; i < uids.length; i++) {
-    if (!errorIndexes.includes(i)) {
-      try {
-        await deleteUserData(uids[i]);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }
+  await deleteUserData(uids, domain, errorIndexes);
   return deleteUsersResult;
 });
 
@@ -134,7 +154,6 @@ exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
       throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." })
     }
     await admin.auth().deleteUser(uid);
-    await deleteUserData(uid);
   } catch (e) {
     throwError(e);
   }
