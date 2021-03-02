@@ -11,12 +11,11 @@ jobs:
       - run: |
           brew install jq
           cd functions
-          jq '.private_key=env.FIREBASE_PRIVATE_KEY' serviceAccountKey.json >> tmp.json
-          mv tmp.json serviceAccountKey.json
-          npm ci
-          npm test
+          jq '.private_key=env.FIREBASE_PRIVATE_KEY' serviceAccountKey.json >> tmp.json && mv tmp.json serviceAccountKey.json
+          echo "Added FIREBASE_PRIVATE_KEY to .json file"
+          npm ci && npm test
         env:
-          FIREBAES_PRIVATE_KEY: '${{ secrets.FIREBASE_PRIVATE_KEY }}'
+          FIREBASE_PRIVATE_KEY: '${{ secrets.FIREBASE_PRIVATE_KEY }}'
   build_and_preview:
     runs-on: ubuntu-latest
     steps:
