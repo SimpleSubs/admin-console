@@ -140,12 +140,12 @@ const OrderOptionsTable = ({ orderOptions, setOrderOptions }) => {
 
   const MenuButtons = {
     Left: ({ openModal }) => <StyledButton title={"Create"} icon={"fa-plus"} onClick={openModal} />,
-    Right: ({ selected }) => (
+    Right: ({ selected, setCarefulSubmit }) => (
       <HamburgerButton
         selected={selected}
         actions={(anySelected) => [{
           title: `Delete ${anySelected ? "selected" : "all"} order fields`,
-          action: () => deleteOrderOptions(selected)
+          action: () => setCarefulSubmit(() => () => deleteOrderOptions(selected))
         }]}
       />
     )
@@ -185,12 +185,12 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
 
   const MenuButtons = {
     Left: ({ openModal }) => <StyledButton title={"Create"} icon={"fa-plus"} onClick={openModal} />,
-    Right: ({ selected }) => (
+    Right: ({ selected, setCarefulSubmit }) => (
       <HamburgerButton
         selected={selected}
         actions={(anySelected) => [{
           title: `Delete ${anySelected ? "selected" : "all"} user fields`,
-          action: () => deleteUserFields(selected)
+          action: () => setCarefulSubmit(() => () => deleteUserFields(selected))
         }]}
       />
     )

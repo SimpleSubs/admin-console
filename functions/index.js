@@ -1,6 +1,16 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const { batchWrite } = require("./helpers");
+
 admin.initializeApp();
+
+const userDataCollection = (domain, uid) => (
+  admin.firestore()
+    .collection("domains")
+    .doc(domain)
+    .collection("userData")
+    .doc(uid)
+);
 
 const throwError = (error) => {
   console.error(error);
@@ -9,16 +19,12 @@ const throwError = (error) => {
 
 const isAdmin = async (uid) => {
   let domain = (await admin.firestore().collection("userDomains").doc(uid).get()).data().domain;
-  let doc = await admin.firestore()
-    .collection("domains")
-    .doc(domain)
-    .collection("userData")
-    .doc(uid).get()
-    .catch(throwError);
-  if (!doc.exists || !(doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN")) {
+  let doc = await userDataCollection(domain, uid).get().catch(throwError);
+  let accountType = doc.data().accountType;
+  if (!doc.exists || !(accountType === "OWNER" || accountType === "ADMIN")) {
     throwError({ code: "permission-denied", message: "User is not an admin" });
   } else {
-    return domain;
+    return { domain, accountType };
   }
 }
 
@@ -29,65 +35,82 @@ const getDomains = async () => {
     domainsObj[doc.id] = doc.data().domain;
   }
   return domainsObj;
-}
+};
 
-const checkAuth = async (auth, uids) => {
+const getAccountTypes = async (domain) => {
+  let userDataSnapshot = await admin.firestore()
+    .collection("domains")
+    .doc(domain)
+    .collection("userData")
+    .get();
+  let accountTypes = {};
+  for (let doc of userDataSnapshot.docs) {
+    accountTypes[doc.id] = doc.data().accountType;
+  }
+  return accountTypes;
+};
+
+// Users may edit their own accounts but not delete them
+const checkAuth = async (auth, uids, deleting = false) => {
   if (!auth) {
     throwError({ code: "permission-denied", message: "User is not signed in" });
   }
-  const domain = await isAdmin(auth.uid);
+  const { domain, accountType } = await isAdmin(auth.uid);
+  let editableUids = [];
+  let uneditableUids = [];
   if (uids && uids.length > 0) {
     const userDomains = await getDomains();
+    const accountTypes = await getAccountTypes(domain);
     for (let uid of uids) {
       if (userDomains[uid] !== domain) {
         throwError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
       }
+      if (
+        (uid === auth.uid && !deleting) || // own user's account is editable as long as they're not deleting it
+        (accountType === "ADMIN" && accountTypes[uid] === "USER") || // can edit any USERs as admin
+        (accountType === "OWNER" && accountTypes[uid] !== "OWNER") // can edit any ADMINs or USERs as owner
+      ) {
+        editableUids.push(uid);
+      } else {
+        uneditableUids.push(uid)
+      }
     }
   }
-  return domain;
+  return { domain, editableUids, uneditableUids };
 };
 
-const deleteUserData = async (uid) => {
-  await admin.firestore().collection("userData").doc(uid).delete().catch(throwError);
-  console.log("Successfully deleted user data for " + uid);
-}
+const deleteUserData = async (uids, domain, errorIndexes) => {
+  let uidsToDelete = uids.filter((value, i) => !errorIndexes.includes(i));
+  let refsToDelete = uidsToDelete.map((uid) => userDataCollection(domain, uid));
+  await batchWrite(refsToDelete, (batch, ref) => batch.delete(ref), admin.firestore(), throwError);
+};
 
 exports.checkIsAdmin = functions.https.onCall( async (data, context) => {
-  let { uid } = await admin.auth().getUserByEmail(data.email).catch(throwError);
-  let domain = (await admin.firestore().collection("userDomains").doc(uid).get()).data().domain;
-  let doc = await admin.firestore()
-    .collection("domains")
-    .doc(domain)
-    .collection("userData")
-    .doc(uid).get()
-    .catch(throwError);
-  return doc.exists && (doc.data().accountType === "OWNER" || doc.data().accountType === "ADMIN");
+  try {
+    let { uid } = await admin.auth().getUserByEmail(data.email);
+    await isAdmin(uid);
+    return true;
+  } catch (e) {
+    return false;
+  }
 });
 
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
-  let uids = data.uids;
-  await checkAuth(context.auth, uids);
-  let deleteUsersResult = await admin.auth().deleteUsers(uids).catch(throwError);
+  const uids = data.uids;
+  const { domain, editableUids, uneditableUids } = await checkAuth(context.auth, uids, true);
+  let deleteUsersResult = await admin.auth().deleteUsers(editableUids).catch(throwError);
   console.log("Successfully deleted " + deleteUsersResult.successCount + " users");
-  console.log("Failed to delete " +  deleteUsersResult.failureCount + " users");
+  console.log("Failed to delete " + (deleteUsersResult.failureCount + uneditableUids.length) + " users");
   deleteUsersResult.errors.forEach((error) => {
     console.error(error);
   });
   let errorIndexes = deleteUsersResult.errors.map(({ index }) => index);
-  for (let i = 0; i < uids.length; i++) {
-    if (!errorIndexes.includes(i)) {
-      try {
-        await deleteUserData(uids[i]);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }
-  return deleteUsersResult;
+  await deleteUserData(editableUids, domain, errorIndexes);
+  return { errors: deleteUsersResult.errors, uneditableUids };
 });
 
 exports.listAllUsers = functions.https.onCall(async (data, context) => {
-  const domain = await checkAuth(context.auth, []);
+  const { domain } = await checkAuth(context.auth, []);
   // Assume that there are no more than 1000 users
   let listUsersResult = await admin.auth().listUsers(1000).catch(throwError);
   let userDomains = await getDomains();
@@ -102,22 +125,31 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
 });
 
 exports.setEmail = functions.https.onCall(async (data, context) => {
-  await checkAuth(context.auth, [data.uid]);
   let uid = data.uid;
+  const { editableUids } = await checkAuth(context.auth, [data.uid]);
+  if (editableUids.length === 0) {
+    throwError({ code: "permission-denied", message: "You do not have permission to edit this user" });
+  }
   await admin.auth().updateUser(uid, { email: data.email }).catch(throwError);
 });
 
 exports.resetPasswords = functions.https.onCall(async (data, context) => {
-  const domain = await checkAuth(context.auth, data.uids);
+  const { domain, editableUids, uneditableUids } = await checkAuth(context.auth, data.uids, false);
   try {
     let doc = await admin.firestore().collection("domains").doc(domain)
       .collection("appData").doc("defaultUser")
       .get();
     let password = doc.data().password;
-    let uids = data.uids;
-    await Promise.all(uids.map((uid) => admin.auth().updateUser(uid, { password })));
-    console.log("Successfully reset " + uids.length + " passwords to '" + password + "'.");
-    return password;
+    let success = [];
+    let failed = [...uneditableUids];
+    await Promise.all(editableUids.map((uid) => (
+      admin.auth().updateUser(uid, { password })
+        .then(() => success.push(uid))
+        .catch(() => failed.push(uid))
+    )));
+    console.log(`Successfully reset ${success.length} passwords to '${password}'.`);
+    console.log(`Failed to reset ${failed.length} passwords.`);
+    return { password, success, failed };
   } catch (e) {
     throwError(e);
   }
@@ -129,93 +161,21 @@ exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
     throwError({ code: "permission-denied", message: "You must be logged into the account to delete it." });
   }
   try {
-    let doc = await admin.firestore().collection("userDomains").doc(uid).get();
+    const docRef = admin.firestore().collection("userDomains").doc(uid);
+    let doc = await docRef.get();
     if (doc.exists && doc.data().domain) {
       throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." })
+    } else if (doc.exists) {
+      await docRef.delete();
     }
     await admin.auth().deleteUser(uid);
-    await deleteUserData(uid);
   } catch (e) {
     throwError(e);
   }
-})
-
-// const migrateCollection = async (srcCollection, destCollection, data = (doc) => doc, deleteAfter = false, condition = null) => {
-//   const documents = await srcCollection.get();
-//   let writeBatch = admin.firestore().batch();
-//   let i = 0;
-//   try {
-//     for (const doc of documents.docs) {
-//       if (condition) {
-//         if (condition(doc.data())) {
-//           writeBatch.set(destCollection.doc(doc.id), data(doc.data()));
-//           i++;
-//           if (deleteAfter) {
-//             writeBatch.delete(doc.ref);
-//             i++;
-//           }
-//         }
-//       } else {
-//         writeBatch.set(destCollection.doc(doc.id), data(doc.data()));
-//         i++;
-//         if (deleteAfter) {
-//           writeBatch.delete(doc.ref);
-//           i++;
-//         }
-//       }
-//       if (i > 400) {  // write batch only allows maximum 500 writes per batch
-//         i = 0;
-//         console.log("Intermediate committing of batch operation");
-//         await writeBatch.commit();
-//         writeBatch = admin.firestore().batch();
-//       }
-//     }
-//     if (i > 0) {
-//       console.log("Firebase batch operation completed. Doing final committing of batch operation.");
-//       await writeBatch.commit();
-//     } else {
-//       console.log("Firebase batch operation completed.");
-//     }
-//   } catch (e) {
-//     console.error(e);
-//     console.log("Number of operations: " + i);
-//   }
-// }
-
-// exports.migrateToDomains = functions.https.onCall(async (data, context) => {
-//   const lwhsCollection = admin.firestore().collection("domains").doc("lwhs").collection("userData");
-//   const userDataCollection = admin.firestore().collection("userData");
-//   await migrateCollection(userDataCollection, lwhsCollection);
-//   await migrateCollection(userDataCollection, admin.firestore().collection("userDomains"), () => ({ domain: "lwhs" }));
-//
-//   const snapshot = await userDataCollection.get();
-//   for (const doc of snapshot.docs) {
-//     await migrateCollection(userDataCollection.doc(doc.id).collection("myPresets"), lwhsCollection.doc(doc.id).collection("myPresets"));
-//   }
-// });
-//
-// exports.manualMigrate = functions.https.onCall(async (data, context) => {
-//   const srcCollection = admin.firestore().collection("allOrders").where("date", ">", "2021-01-20");
-//   const targetCollection = admin.firestore().collection("domains").doc("lwhs").collection("orders");
-//   await migrateCollection(srcCollection, targetCollection);
-// });
-
-exports.migrateToDomain = functions.firestore
-  .document("allOrders/{order}")
-  .onWrite(async (change, context) => {
-    const targetCollection = admin.firestore().collection("domains").doc("lwhs").collection("orders");
-    const data = change.after.exists ? change.after.data() : null;
-    if (!data) {
-      await targetCollection.doc(context.params.order).delete();
-      console.log("Deleted order " + context.params.order);
-    } else {
-      await targetCollection.doc(context.params.order).set(data);
-      console.log("Updated order " + context.params.order);
-    }
-  });
+});
 
 exports.updateDomainData = functions.https.onCall(async (data, context) => {
-  const domain = await checkAuth(context.auth);
+  const { domain } = await checkAuth(context.auth);
   if (domain !== data.id) {
     throwError({ code: "permission-denied", message: "You may only edit data for your own organization." });
   }
@@ -225,20 +185,3 @@ exports.updateDomainData = functions.https.onCall(async (data, context) => {
     throwError(e);
   }
 });
-
-//
-// exports.migrateToExample = functions.https.onCall(async (data, context) => {
-//   const lwhsCollection = admin.firestore().collection("domains)").doc("example").collection("userData");
-//   const exampleCollection = admin.firestore().collection("domains").doc("example").collection("userData");
-//   await migrateCollection(lwhsCollection, exampleCollection, null, true, ({ name }) => (name === "MIT Admissions" || name === "Harvard Admissions" || name === "Jane Doe"));
-// })
-//
-// exports.mapAcross = functions.https.onCall(async (data, context) => {
-//   const col = admin.firestore().collection("domains").doc("lwhs").collection("pastOrders");
-//   const deleteUid = (data) => {
-//     let newData = { ...data };
-//     delete newData.key;
-//     return newData;
-//   }
-//   await migrateCollection(col, col, deleteUid);
-// });

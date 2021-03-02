@@ -7,6 +7,7 @@ import { TableTypes, ColumnSizes } from "../constants/TableActions";
 import { toReadable } from "../constants/Date";
 import "../stylesheets/Table.scss";
 import EditRowForm from "./EditRowForm";
+import WarningModal from "./WarningModal";
 
 const PAGE_SIZE = 50;
 
@@ -205,6 +206,7 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
   // eslint-disable-next-line
   const preppedData = React.useMemo(() => getDataValues(data).map((row) => prepData(row, getColumnValues(columns))), [data, columns]);
   const [modalOpen, toggleModal] = React.useState(false);
+  const [carefulSubmit, setCarefulSubmit] = React.useState(null);
   const [focusedRow, setFocusedRow] = React.useState(null);
   const [records, setRecords] = React.useState(preppedData);
   const [dragOverIndex, setDragOverIndex] = React.useState(-1);
@@ -324,6 +326,11 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
 
   return (
     <>
+      <WarningModal
+        open={!!carefulSubmit}
+        onSubmit={carefulSubmit}
+        closeModal={() => setCarefulSubmit(null)}
+      />
       <EditRowForm
         fields={[...columns, ...extraFields]}
         id={id}
@@ -337,74 +344,86 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
       />
       <table {...getTableProps()}>
         <thead>
-          <tr>
-            <th className={"menu-button left"}>
-              {!custom ? (
-                <SearchBar
-                  globalFilter={globalFilter}
-                  setGlobalFilter={setGlobalFilter}
-                />
-              ) : (
-                <div>
-                  {MenuButtons.Left && <MenuButtons.Left selected={selectedRowIds} openModal={() => toggleModal(true)} />}
-                </div>
-              )}
-            </th>
-            <th className={"table-title"}>{title}</th>
-            <th className={"menu-button right"}>
+        <tr>
+          <th className={"menu-button left"}>
+            {!custom ? (
+              <SearchBar
+                globalFilter={globalFilter}
+                setGlobalFilter={setGlobalFilter}
+              />
+            ) : (
               <div>
-                {MenuButtons.Right && <MenuButtons.Right selected={selectedRowIds} openModal={() => toggleModal(true)} />}
+                {MenuButtons.Left && (
+                  <MenuButtons.Left
+                    selected={selectedRowIds}
+                    openModal={() => toggleModal(true)}
+                    setCarefulSubmit={setCarefulSubmit}
+                  />
+                )}
               </div>
-            </th>
-          </tr>
-          {headerGroups.map((headerGroup) => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map((column) => (
-                <th
-                  className={`${column.id} ${column.isSorted && "space"}`}
-                  {...column.getHeaderProps(!custom && column.getSortByToggleProps())}
-                >
-                  {column.isSorted && (
-                    <span className={"sort-arrow-placeholder"}>
+            )}
+          </th>
+          <th className={"table-title"}>{title}</th>
+          <th className={"menu-button right"}>
+            <div>
+              {MenuButtons.Right && (
+                <MenuButtons.Right
+                  selected={selectedRowIds}
+                  openModal={() => toggleModal(true)}
+                  setCarefulSubmit={setCarefulSubmit}
+                />
+              )}
+            </div>
+          </th>
+        </tr>
+        {headerGroups.map((headerGroup) => (
+          <tr {...headerGroup.getHeaderGroupProps()}>
+            {headerGroup.headers.map((column) => (
+              <th
+                className={`${column.id} ${column.isSorted && "space"}`}
+                {...column.getHeaderProps(!custom && column.getSortByToggleProps())}
+              >
+                {column.isSorted && (
+                  <span className={"sort-arrow-placeholder"}>
                       <i className={"fas fa-arrow-up"} />
                     </span>
-                  )}
-                  {column.render("Header")}
-                  {column.isSorted && (
-                    <span className={"sort-arrow " + (column.isSortedDesc ? "down" : "")}>
+                )}
+                {column.render("Header")}
+                {column.isSorted && (
+                  <span className={"sort-arrow " + (column.isSortedDesc ? "down" : "")}>
                       <i className="fas fa-arrow-up" />
                     </span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          ))}
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
         </thead>
         <tbody {...getTableBodyProps()}>
-          {page.length === 0 ?
-            <tr className={"no-data"}>
-              <td>No data to display</td>
-            </tr> :
-            page.map((row, index) => {
-              prepareRow(row);
-              return (
-                <Row
-                  key={row.id}
-                  data={records}
-                  custom={custom}
-                  focusRow={focusRow}
-                  index={row.id}
-                  currentIndex={index + (pageIndex * PAGE_SIZE)}
-                  row={row}
-                  moveRow={moveRow}
-                  tableId={id}
-                  dragOverIndex={dragOverIndex}
-                  setDragOverIndex={setDragOverIndex}
-                  onReorder={onReorder}
-                />
-              );
-            })
-          }
+        {page.length === 0 ?
+          <tr className={"no-data"}>
+            <td>No data to display</td>
+          </tr> :
+          page.map((row, index) => {
+            prepareRow(row);
+            return (
+              <Row
+                key={row.id}
+                data={records}
+                custom={custom}
+                focusRow={focusRow}
+                index={row.id}
+                currentIndex={index + (pageIndex * PAGE_SIZE)}
+                row={row}
+                moveRow={moveRow}
+                tableId={id}
+                dragOverIndex={dragOverIndex}
+                setDragOverIndex={setDragOverIndex}
+                onReorder={onReorder}
+              />
+            );
+          })
+        }
         </tbody>
         <PageButtons
           canNextPage={canNextPage}
