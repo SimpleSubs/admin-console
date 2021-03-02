@@ -119,8 +119,10 @@ export function logOut(dispatch) {
 export function deleteUsers(uidsToDelete, myUid, dispatch) {
   dispatch(setLoading(true));
   let uids = uidsToDelete.filter((uid) => uid !== myUid);
-  deleteUsersFunction(uids).then(({ successCount }) => {
-    console.log("Successfully deleted " + successCount + " users");
+  deleteUsersFunction(uids).then(({ errors, uneditableUids }) => {
+    console.log(`Successfully deleted ${uids.length - errors.length - uneditableUids.length} users`);
+    console.log(`User does not have access to delete ${uneditableUids.length} users`);
+    console.log(`Failed to delete ${errors.length} users`);
     dispatch(setLoading(false));
   }).catch((error) => reportError(error, dispatch));
 }
@@ -170,8 +172,9 @@ export async function updateUser(uid, userData, prevUserData, dispatch, domain) 
 
 export function resetPasswords(uids, dispatch) {
   dispatch(setLoading(true));
-  resetPasswordsFunction(uids).then((password) => {
-    console.log("Successfully reset passwords to '" + password + "'.");
+  resetPasswordsFunction(uids).then(({ password, success, failed }) => {
+    console.log(`Successfully set ${success.length} passwords to '${password}'.`);
+    console.log(`Failed to reset ${failed.length} passwords.`);
     dispatch(setLoading(false));
   }).catch((error) => reportError(error, dispatch));
 }
