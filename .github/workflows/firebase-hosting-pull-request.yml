@@ -8,12 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: cd functions && npm ci && npm test
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_SIMPLE_SUBS_TESTING }}'
-          projectId: simplesubs-testing
+      - run: cd functions && jq '.private_key=env.FIREBASE_PRIVATE_KEY' serviceAccountKey.json >> tmp.json && mv tmp.json serviceAccountKey.json && npm ci && npm test
+        env:
+          FIREBAES_PRIVATE_KEY: '${{ secrets.FIREBASE_PRIVATE_KEY }}'
   build_and_preview:
     runs-on: ubuntu-latest
     steps:

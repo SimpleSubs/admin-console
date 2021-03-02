@@ -17,7 +17,7 @@ const test = require("firebase-functions-test")({
   messagingSenderId: "924437073648",
   appId: "1:924437073648:web:787848118c2bea10f43c35",
   measurementId: "G-7MYB8YY50N"
-});
+}, "serviceAccountKey.json");
 
 const sampleUids = {
   user: "kuItb8RrHTf8c1rMfZrFdMar4LJ2",
