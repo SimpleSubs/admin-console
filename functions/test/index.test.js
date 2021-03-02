@@ -1,4 +1,3 @@
-const util = require("util");
 const { v4: uuid } = require('uuid');
 
 const chai = require("chai");
@@ -229,16 +228,18 @@ describe("Firebase functions", function() {
       it("should delete all requested users with USER account type within domain when admin", function() {
         let context = { auth: { uid: sampleUids.admin } };
         return wrapped(data, context).then(() => getActualDeleteResult(testDomain).then((result) => {
-          assert.notIncludeMembers(result, uidsToDelete);
-          assert.includeMembers(result, getExpectedDeleteResult(exampleUsers, uidsToDelete, "ADMIN"));
+          let expected = uidsToDelete.filter((uid) => exampleUsers[uid].accountType === "USER");
+          assert.notIncludeMembers(result, expected);
+          assert.includeMembers(result, getExpectedDeleteResult(exampleUsers, expected, "ADMIN"));
         }));
       });
 
       it("should delete all requested users with USER/ADMIN account type within domain when owner", function() {
         let context = { auth: { uid: sampleUids.owner } };
         return wrapped(data, context).then(() => getActualDeleteResult(testDomain).then((result) => {
-          assert.notIncludeMembers(result, uidsToDelete);
-          assert.includeMembers(result, getExpectedDeleteResult(exampleUsers, uidsToDelete, "ADMIN"));
+          let expected = uidsToDelete.filter((uid) => exampleUsers[uid].accountType !== "OWNER");
+          assert.notIncludeMembers(result, expected);
+          assert.includeMembers(result, getExpectedDeleteResult(exampleUsers, expected, "OWNER"));
         }));
       });
     });
@@ -300,8 +301,8 @@ describe("Firebase functions", function() {
   describe("setEmail", function() {
     let wrapped;
     const userData = [
-      { accountType: "ADMIN" },
       { accountType: "OWNER" },
+      { accountType: "ADMIN" },
       { accountType: "USER" },
       { accountType: "USER" },
       { accountType: "USER" },
@@ -336,15 +337,15 @@ describe("Firebase functions", function() {
       let uidToChange = Object.keys(adminUser)[0];
       let data = { uid: uidToChange, email: newEmail};
       let context = { auth: { uid: sampleUids.admin } };
-      return assert.isRejected(wrapped(data, context), "You do not have permission to edit these users");
+      return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
 
     it("should throw an error if user is admin trying to edit other owners", function() {
       let newEmail = "newemail1@simple-subs.com";
       let uidToChange = Object.keys(ownerUser)[0];
-      let data = { uid: uidToChange, email: newEmail};
+      let data = { uid: uidToChange, email: newEmail };
       let context = { auth: { uid: sampleUids.admin } };
-      return assert.isRejected(wrapped(data, context), "You do not have permission to edit these users");
+      return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
 
     it("should throw an error if user is owner trying to edit other owners", function() {
@@ -352,7 +353,7 @@ describe("Firebase functions", function() {
       let uidToChange = Object.keys(ownerUser)[0];
       let data = { uid: uidToChange, email: newEmail };
       let context = { auth: { uid: sampleUids.owner } };
-      return assert.isRejected(wrapped(data, context), "You do not have permission to edit these users");
+      return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
 
     it("should only set email of specified user", function() {
@@ -394,14 +395,14 @@ describe("Firebase functions", function() {
   describe("resetPasswords", function() {
     let wrapped;
     const userData = [
-      { accountType: "ADMIN" },
-      { accountType: "ADMIN" },
-      { accountType: "ADMIN" },
-      { accountType: "ADMIN" },
       { accountType: "OWNER" },
       { accountType: "OWNER" },
       { accountType: "OWNER" },
       { accountType: "OWNER" },
+      { accountType: "ADMIN" },
+      { accountType: "ADMIN" },
+      { accountType: "ADMIN" },
+      { accountType: "ADMIN" },
       { accountType: "USER" },
       { accountType: "USER" },
       { accountType: "USER" },
@@ -438,43 +439,55 @@ describe("Firebase functions", function() {
         failed: uidsToReset.slice(0, 2)
       };
       // should return { success: [uids], failed: [uids] }
-      return assert.becomes(wrapped(data, context), expected);
+      return wrapped(data, context).then(({ success, failed }) => {
+        assert.sameMembers(success, expected.success);
+        assert.sameMembers(failed, expected.failed);
+      });
     });
 
     it("should only edit users with accountTypes USER or ADMIN if user is an owner", function() {
       let uidsToReset = [owners[0], admins[0], users[0]];
-      let data = { uids: uidsToReset};
+      let data = { uids: uidsToReset };
       let context = { auth: { uid: sampleUids.owner } };
       let expected = {
         success: uidsToReset.slice(1),
         failed: [uidsToReset[0]]
       };
       // should return { success: [uids], failed: [uids] }
-      return assert.becomes(wrapped(data, context), expected);
+      return wrapped(data, context).then(({ success, failed }) => {
+        assert.sameMembers(success, expected.success);
+        assert.sameMembers(failed, expected.failed);
+      });
     });
 
     it("should work if admin is resetting their own password", function() {
       let uidsToReset = [admins[2]];
-      let data = { uids: uidsToReset};
-      let context = { auth: { uid: sampleUids.admin } };
+      let data = { uids: uidsToReset };
+      let context = { auth: { uid: uidsToReset[0] } };
       let expected = {
         success: uidsToReset,
         failed: []
       };
       // should return { success: [uids], failed: [uids] }
-      return assert.becomes(wrapped(data, context), expected);
+      return wrapped(data, context).then(({ success, failed }) => {
+        assert.sameMembers(success, expected.success);
+        assert.sameMembers(failed, expected.failed);
+      });
     });
 
     it("should work if owner is resetting their own password", function() {
       let uidsToReset = [owners[2]];
-      let data = { uids: uidsToReset};
-      let context = { auth: { uid: sampleUids.owner } };
+      let data = { uids: uidsToReset };
+      let context = { auth: { uid: uidsToReset[0] } };
       let expected = {
         success: uidsToReset,
         failed: []
       };
-      // should return { success: [uids], failed: [uids] }
-      return assert.becomes(wrapped(data, context), expected);
+      // should return { password: [password], success: [uids], failed: [uids] }
+      return wrapped(data, context).then(({ success, failed }) => {
+        assert.sameMembers(success, expected.success);
+        assert.sameMembers(failed, expected.failed);
+      });
     });
   });
 
