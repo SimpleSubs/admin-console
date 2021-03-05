@@ -122,7 +122,7 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
             placeholder={"Enter comma-separated values"}
             id={`${id}-${fieldKey}`}
             name={fieldKey}
-            value={value?.join(", ") || defaultValue?.join(", ") || ""}
+            value={value || defaultValue?.join(", ") || ""}
             onChange={(e) => setValue(e.target.value)}
             disabled={disabled}
           />
@@ -180,6 +180,9 @@ const FormRow = ({ fieldKey, title, type, condition, state, setState, required, 
   if (finalType === TableTypes.HIDDEN) {
     return null;
   }
+  const value = (state[fieldKey] && finalType === TableTypes.ARRAY && Array.isArray(state[fieldKey]))
+    ? state[fieldKey].join(", ")
+    : state[fieldKey];
   return (
     <>
       <VariableLabel isCheckboxList={!custom && type === TableTypes.ARRAY}>
@@ -193,7 +196,7 @@ const FormRow = ({ fieldKey, title, type, condition, state, setState, required, 
             custom={custom}
             type={finalType}
             setValue={setValue}
-            value={state[fieldKey]}
+            value={value}
             fieldKey={fieldKey}
           />
         </div>
@@ -204,7 +207,7 @@ const FormRow = ({ fieldKey, title, type, condition, state, setState, required, 
 };
 
 const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParams = {}, buttonTitles = {}, onCancel = () => {}, className = "", custom = false, ...props }) => {
-  const [state, setFullState] = React.useState(prevData);
+  const [state, setFullState] = React.useState({});
   const [error, setError] = React.useState(false);
 
   const setState = (newValue) => {
