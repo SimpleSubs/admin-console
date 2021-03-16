@@ -50,13 +50,12 @@ const arrsToObject = (keys, values) => {
 };
 
 const makeTestUsers = async (domain, users) => {
-  let usersWithUids = users.map((user) => ({ ...user, uid: uuid() }));
-  await admin.auth().importUsers(
-    usersWithUids.map(({ email, uid }) => email
-      ? { email, uid }
-      : { email: `${generateRandomString(6)}@simple-subs.com`, uid }
-    )
-  );
+  let usersWithEmail = users.map((user) => ({
+    ...user,
+    email: user.email || `${generateRandomString(6)}@simple-subs.com`
+  }))
+  let usersWithUids = usersWithEmail.map((user) => ({ ...user, uid: uuid() }));
+  await admin.auth().importUsers(usersWithUids.map(({ uid, email }) => ({ uid, email })));
   const writeUserData = (batch, data) => {
     let dataToPush = { ...data };
     delete dataToPush.email;
@@ -68,7 +67,7 @@ const makeTestUsers = async (domain, users) => {
   }
   await batchWrite(usersWithUids, writeUserData, admin.firestore(), console.error);
   await batchWrite(usersWithUids, writeDomainData, admin.firestore(), console.error);
-  return arrsToObject(usersWithUids.map(({ uid }) => uid), users);
+  return arrsToObject(usersWithUids.map(({ uid }) => uid), usersWithEmail);
 };
 
 const generateUserData = async (domain, userCount) => {
@@ -563,7 +562,7 @@ describe("Firebase functions", function() {
       let data = { emails: [...queryWithinDomain, ...queryOutsideDomain, ...queryNotFound] };
       let context = { auth: { uid: sampleUids.owner } };
       return wrapped(data, context).then(({ found, notFound, differentDomain }) => {
-        let expectedFound = arrsToObject(uidsWithinDomain, queryWithinDomain);
+        let expectedFound = arrsToObject(queryWithinDomain, uidsWithinDomain);
         let expectedNotFound = queryNotFound;
         let expectedDifferentDomain = queryOutsideDomain;
         assert.deepEqual(found, expectedFound);
