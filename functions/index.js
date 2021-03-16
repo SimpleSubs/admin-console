@@ -185,3 +185,25 @@ exports.updateDomainData = functions.https.onCall(async (data, context) => {
     throwError(e);
   }
 });
+
+exports.getUsersByEmail = functions.https.onCall(async (data, context) => {
+  const { domain } = await checkAuth(context.auth);
+  let query = data.emails.map((email) => ({ email }));
+  let getUsersResult = await admin.auth().getUsers(query);
+  let userDomains = await getDomains();
+  let notFound = getUsersResult.notFound.map(({ email }) => email);
+  let found = {};
+  let differentDomain = [];
+  for (let user of getUsersResult.users) {
+    if (userDomains[user.uid] === domain) {
+      found[user.email] = user.uid;
+    } else {
+      differentDomain.push(user.email);
+    }
+  }
+  return {
+    found,
+    notFound,
+    differentDomain
+  }
+});
