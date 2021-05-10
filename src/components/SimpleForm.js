@@ -54,7 +54,11 @@ function processState(data, fields, key, custom) {
       case TableTypes.ARRAY:
         if (custom) {
           if (value && value.length > 0) {
-            value = value.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+            // value will be a string if user is creating a field; otherwise it will be array
+            // TODO: determine whether or not user is editing/creating beforehand (this is a hack-y solution)
+            if (typeof value === "string") {
+              value = value.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0);
+            }
           } else {
             value = field.defaultValue || [];
           }
