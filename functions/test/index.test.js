@@ -50,13 +50,12 @@ const arrsToObject = (keys, values) => {
 };
 
 const makeTestUsers = async (domain, users) => {
-  let usersWithUids = users.map((user) => ({ ...user, uid: uuid() }));
-  await admin.auth().importUsers(
-    usersWithUids.map(({ email, uid }) => email
-      ? { email, uid }
-      : { email: `${generateRandomString(6)}@simple-subs.com`, uid }
-    )
-  );
+  let usersWithEmail = users.map((user) => ({
+    ...user,
+    email: user.email || `${generateRandomString(6)}@simple-subs.com`
+  }))
+  let usersWithUids = usersWithEmail.map((user) => ({ ...user, uid: uuid() }));
+  await admin.auth().importUsers(usersWithUids.map(({ uid, email }) => ({ uid, email })));
   const writeUserData = (batch, data) => {
     let dataToPush = { ...data };
     delete dataToPush.email;
@@ -68,7 +67,7 @@ const makeTestUsers = async (domain, users) => {
   }
   await batchWrite(usersWithUids, writeUserData, admin.firestore(), console.error);
   await batchWrite(usersWithUids, writeDomainData, admin.firestore(), console.error);
-  return arrsToObject(usersWithUids.map(({ uid }) => uid), users);
+  return arrsToObject(usersWithUids.map(({ uid }) => uid), usersWithEmail);
 };
 
 const generateUserData = async (domain, userCount) => {
@@ -529,5 +528,47 @@ describe("Firebase functions", function() {
         "There is no user record corresponding to the provided identifier."
       ));
     });
+  });
+
+  describe("getUsersByEmail", function() {
+    let wrapped;
+    let usersWithinDomain;
+    let usersOutsideDomain;
+
+    before(async function() {
+      let { getUsersByEmail } = require("../index.js");
+      wrapped = test.wrap(getUsersByEmail);
+      usersWithinDomain = await generateUserData(testDomain, 10);
+      usersOutsideDomain = await generateUserData(invalidTestDomain, 10);
+    });
+
+    after(async function() {
+      await cleanUpUsers(testDomain);
+      await cleanUpUsers(invalidTestDomain);
+    });
+
+    it("should throw an error if user is not an admin", function() {
+      let data = {};
+      let context = { auth: { uid: sampleUids.user } };
+      return assert.isRejected(wrapped(data, context), "User is not an admin");
+    });
+
+    it("should return users correctly sorted into found, not found, and different domain", function() {
+      let uidsWithinDomain = Object.keys(usersWithinDomain).slice(0, 3);
+      let uidsOutsideDomain = Object.keys(usersOutsideDomain).slice(0, 3);
+      let queryWithinDomain = uidsWithinDomain.map((uid) => usersWithinDomain[uid].email);
+      let queryOutsideDomain = uidsOutsideDomain.map((uid) => usersOutsideDomain[uid].email);
+      let queryNotFound = ["newuser1@simple-subs.com", "newuser2@simple-subs.com", "newuser3@simple-subs.com"];
+      let data = { emails: [...queryWithinDomain, ...queryOutsideDomain, ...queryNotFound] };
+      let context = { auth: { uid: sampleUids.owner } };
+      return wrapped(data, context).then(({ found, notFound, differentDomain }) => {
+        let expectedFound = arrsToObject(queryWithinDomain, uidsWithinDomain);
+        let expectedNotFound = queryNotFound;
+        let expectedDifferentDomain = queryOutsideDomain;
+        assert.deepEqual(found, expectedFound);
+        assert.sameMembers(notFound, expectedNotFound);
+        assert.sameMembers(differentDomain, expectedDifferentDomain);
+      });
+    })
   });
 });
