@@ -1,5 +1,53 @@
 @use "index";
 
+form {
+  input:not([type=button]):not([type=submit]):not([type=checkbox]), select {
+    border: none;
+    padding: 15px;
+    width: 100%;
+    background-color: index.$textInputColor;
+    border-radius: 5px;
+    font-size: 16px;
+    &::placeholder {
+      color: index.$textInputText;
+    }
+    &[disabled] {
+      background-color: transparent;
+    }
+    &[type=file] {
+      background-color: transparent;
+      cursor: pointer;
+    }
+  }
+  input[type=date] {
+    flex-direction: row;
+  }
+  .picker {
+    position: relative;
+    select {
+      cursor: pointer;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      appearance:none;
+      position: relative;
+    }
+    .caret {
+      pointer-events: none;
+      display: block;
+      position: absolute;
+      cursor: pointer;
+      right: 1rem;
+      top: 50%;
+      margin-top: -1px;
+      width: 0;
+      height: 0;
+      border-top: 5px solid #000;
+      border-right: 5px solid transparent;
+      border-left: 5px solid transparent;
+    }
+  }
+}
+
 .simple-form {
   background-color: index.$backgroundColor;
   padding: 40px;
@@ -39,6 +87,10 @@
           background-color: transparent;
           border: 1px index.$checkboxText solid !important;
           color: index.$checkboxText !important;
+
+          &:hover {
+            opacity: 0.8;
+          }
         }
       }
     }
@@ -52,7 +104,7 @@
   width: 100vw;
   top: 0;
   left: 0;
-  background-color: #00000088;
+  background-color: #0008;
   align-items: center;
   justify-content: center;
   z-index: 1000000;
@@ -66,9 +118,10 @@
   }
   form {
     transition: transform 0.2s ease;
+    border-radius: 20px;
     pointer-events: auto;
     box-shadow: 0 0 10px 0 #0000003f;
-    overflow: scroll;
+    overflow: auto;
   }
 }
 
@@ -76,7 +129,6 @@
   width: 60vw;
   max-width: 800px;
   max-height: 90vh;
-  border-radius: 20px;
 }
 
 .checkbox-list {

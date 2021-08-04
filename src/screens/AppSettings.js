@@ -145,7 +145,7 @@ const OrderOptionsTable = ({ orderOptions, setOrderOptions }) => {
         selected={selected}
         actions={(anySelected) => [{
           title: `Delete ${anySelected ? "selected" : "all"} order fields`,
-          action: () => setCarefulSubmit(() => () => deleteOrderOptions(selected))
+          action: () => setCarefulSubmit(() => deleteOrderOptions(selected))
         }]}
       />
     )
@@ -190,7 +190,7 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
         selected={selected}
         actions={(anySelected) => [{
           title: `Delete ${anySelected ? "selected" : "all"} user fields`,
-          action: () => setCarefulSubmit(() => () => deleteUserFields(selected))
+          action: () => setCarefulSubmit(() => deleteUserFields(selected))
         }]}
       />
     )

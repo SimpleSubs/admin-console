@@ -6,7 +6,14 @@ chai.use(chaiAsPromised);
 const { assert } = chai;
 
 const admin = require("firebase-admin");
-const { batchWrite } = require("../helpers");
+const {
+  batchWrite,
+  arrsToObject,
+  collectionToObject,
+  AccountTypesPriority,
+  Actions,
+  Permissions
+} = require("../helpers");
 
 // Initialize test with config data and service account key
 const test = require("firebase-functions-test")({
@@ -25,48 +32,66 @@ const sampleUids = {
   owner: "trpm5sZZ7Ce8IrkjplhYbfPLpxq1"
 };
 
+const defaultUserData = { password: "defaultPassword" };
 const testDomain = "test";
 const invalidTestDomain = "cantTouchThis";
+let firestore;
 
-const userDataCollection = (domain, uid) => (
-  admin.firestore()
+const userDataCollection = (domain) => (
+  firestore
     .collection("domains")
     .doc(domain)
     .collection("userData")
-    .doc(uid)
 );
+
+const userDataDoc = (domain, uid) => userDataCollection(domain).doc(uid);
+const userDomainsCollection = () => firestore.collection("userDomains");
+const userDomainDoc = (uid) => userDomainsCollection().doc(uid);
 
 const generateRandomString = (length) => Math.random().toString(20).substr(2, length);
 const generateRandomInteger = (lowerBound, upperBound) => (
   Math.floor(Math.random() * (upperBound - lowerBound)) + lowerBound
 );
 
-const arrsToObject = (keys, values) => {
-  let obj = {};
-  for (let i = 0; i < keys.length; i++) {
-    obj[keys[i]] = values[i];
+const isSubset = (superset, subset) => {
+  if (!(superset && subset && typeof superset === "object" && typeof subset === "object")) {
+    return false;
   }
-  return obj;
-};
+  for (let key of Object.keys(subset)) {
+    if (subset[key] !== superset[key]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const allAreSubset = (superObj, subObj) => {
+  for (let key of Object.keys(subObj)) {
+    if (!isSubset(superObj[key], subObj[key])) {
+      return false;
+    }
+  }
+  return true;
+}
 
 const makeTestUsers = async (domain, users) => {
   let usersWithEmail = users.map((user) => ({
     ...user,
     email: user.email || `${generateRandomString(6)}@simple-subs.com`
-  }))
+  }));
   let usersWithUids = usersWithEmail.map((user) => ({ ...user, uid: uuid() }));
   await admin.auth().importUsers(usersWithUids.map(({ uid, email }) => ({ uid, email })));
   const writeUserData = (batch, data) => {
     let dataToPush = { ...data };
     delete dataToPush.email;
     delete dataToPush.uid;
-    batch.set(userDataCollection(domain, data.uid), dataToPush);
+    batch.set(userDataDoc(domain, data.uid), dataToPush);
   };
   const writeDomainData = (batch, data) => {
-    batch.set(admin.firestore().collection("userDomains").doc(data.uid), { domain });
+    batch.set(userDomainDoc(data.uid), { domain });
   }
-  await batchWrite(usersWithUids, writeUserData, admin.firestore(), console.error);
-  await batchWrite(usersWithUids, writeDomainData, admin.firestore(), console.error);
+  await batchWrite(usersWithUids, writeUserData, firestore, console.error);
+  await batchWrite(usersWithUids, writeDomainData, firestore, console.error);
   return arrsToObject(usersWithUids.map(({ uid }) => uid), usersWithEmail);
 };
 
@@ -80,69 +105,71 @@ const generateUserData = async (domain, userCount) => {
   return await makeTestUsers(domain, users);
 };
 
-const createFailedUser = async () => {
-  let userRecord = await admin.auth().createUser({ email: `${generateRandomString(6)}@simple-subs.com` });
-  return userRecord.uid;
-}
-
 // Assuming no more than 1000 users
-const cleanUpUsers = async (domain) => {
+const cleanUpUserAccounts = async (domain, userDomains, uidsToKeep) => {
   let allUids = (await admin.auth().listUsers()).users.map(({ uid }) => uid);
-  let uidsToDelete = allUids.filter((uid) => !Object.values(sampleUids).includes(uid));
-  await admin.auth().deleteUsers(uidsToDelete);
-  const deleteAction = (batch, ref) => batch.delete(ref);
-  await batchWrite(
-    uidsToDelete.map((uid) => userDataCollection(domain, uid)),
-    deleteAction,
-    admin.firestore(),
-    console.error
-  );
-  await batchWrite(uidsToDelete.map((uid) => (
-    admin.firestore()
-      .collection("userDomains")
-      .doc(uid)
-  )), deleteAction, admin.firestore(), console.error);
-};
-
-const getExpectedDeleteResult = (users, uidsToDelete, adminAccountType) => {
-  const canDelete = (accountType) => {
-    switch (adminAccountType) {
-      case "ADMIN":
-        return accountType === "USER";
-      case "OWNER":
-        return accountType !== "OWNER";
-      default:
-        return false;
-    }
-  };
-  return Object.keys(users).filter((uid) => !(
-    uidsToDelete.includes(uid) &&
-    canDelete(users[uid].accountType)
+  let uidsToDelete = allUids.filter((uid) => (
+    !uidsToKeep.includes(uid) && (!userDomains[uid] || userDomains[uid].domain === domain)
   ));
+  await admin.auth().deleteUsers(uidsToDelete);
 };
 
-const getActualDeleteResult = async (domain) => {
-  let result = await admin.firestore().collection("domains").doc(domain).collection("userData").get();
-  let sampleUidsArr = Object.values(sampleUids);
-  return result.docs
-    .filter((doc) => !sampleUidsArr.includes(doc.id))
-    .map((doc) => doc.id);
+const cleanUpUserData = async (domain, uidsToKeep) => {
+  let allUids = (await userDataCollection(domain).get()).docs?.map((doc) => doc.id) || [];
+  let uidsToDelete = allUids.filter((uid) => !uidsToKeep.includes(uid));
+  await batchWrite(
+    uidsToDelete.map((uid) => userDataDoc(domain, uid)),
+    (batch, ref) => batch.delete(ref),
+    firestore
+  );
+};
+
+const cleanUpUserDomains = async (domain, userDomains, uidsToKeep) => {
+  let uidsToDelete = Object.keys(userDomains).filter((uid) => (
+    !uidsToKeep.includes(uid) && userDomains[uid].domain === domain
+  ));
+  await batchWrite(
+    uidsToDelete.map((uid) => userDomainDoc(uid)),
+    (batch, ref) => batch.delete(ref),
+    firestore
+  );
+};
+
+const cleanUpUsers = async (domain) => {
+  let userDomains = collectionToObject(await userDomainsCollection().get());
+  let uidsToKeep = Object.values(sampleUids);
+
+  // Must do all three separately in case a previous delete action was skipped/didn't work
+  await cleanUpUserAccounts(domain, userDomains, uidsToKeep);
+  await cleanUpUserData(domain, uidsToKeep);
+  await cleanUpUserDomains(domain, userDomains, uidsToKeep);
+};
+
+const checkDomains = async (domain, uids) => {
+  let querySnapshot = await userDomainsCollection().where(admin.firestore.FieldPath.documentId(), "in", uids);
+  for (let doc of querySnapshot.docs) {
+    if (doc.data().domain !== domain) {
+      return false;
+    }
+  }
+  return true;
 };
 
 describe("Firebase functions", function() {
-  this.timeout(5000);
+  let myFunctions = require("../index.js");
 
-  afterEach(function() {
+  this.timeout(7500);
+
+  before(function() {
+    firestore = admin.firestore();
+  });
+
+  after(function() {
     test.cleanup();
   });
 
   describe("checkIsAdmin", async function() {
-    let wrapped;
-
-    before(function() {
-      let { checkIsAdmin } = require("../index.js");
-      wrapped = test.wrap(checkIsAdmin);
-    })
+    const wrapped = test.wrap(myFunctions.checkIsAdmin);
 
     it("should return true when accountType is ADMIN", function() {
       let data = { email: "admin@simple-subs.com" };
@@ -166,14 +193,30 @@ describe("Firebase functions", function() {
   });
 
   describe("deleteUsers", function() {
-    let wrapped;
+    const getExpectedDeleteResult = (users, uidsToDelete, adminAccountType) => {
+      const canDelete = (accountType) => (
+        Permissions[adminAccountType][Actions.DELETING] >= AccountTypesPriority[accountType]
+      );
+      return Object.keys(users).filter((uid) => !(
+        uidsToDelete.includes(uid) &&
+        canDelete(users[uid].accountType)
+      ));
+    };
+
+    const getActualDeleteResult = async (domain) => {
+      let result = await userDataCollection(domain).get();
+      let sampleUidsArr = Object.values(sampleUids);
+      return result.docs
+        .filter((doc) => !sampleUidsArr.includes(doc.id))
+        .map((doc) => doc.id);
+    };
+
+    const wrapped = test.wrap(myFunctions.deleteUsers);
 
     describe("auth tests", function() {
       let uneditableUsers;
 
       before(async function() {
-        let { deleteUsers } = require("../index.js");
-        wrapped = test.wrap(deleteUsers);
         uneditableUsers = await generateUserData(invalidTestDomain, 1);
       });
 
@@ -242,31 +285,14 @@ describe("Firebase functions", function() {
         }));
       });
     });
-
-    // describe("stress tests", function() {
-    //   let exampleUsers = generateUserData(testDomain, 900);
-    //   it("should be able to handle over 500 deletes at a time", function() {
-    //     let exampleUids = Object.keys(exampleUsers);
-    //     let indexesToDelete = generateUniqueRandomIntegers(0, exampleUids.length, 800);
-    //     let uidsToDelete = exampleUids.filter((user, index) => indexesToDelete.includes(index));
-    //     let data = { uids: uidsToDelete };
-    //     let context = { auth: { uid: sampleUids.admin } };
-    //     return assert.eventually.isTrue(
-    //       wrapped(data, context)
-    //         .then(() => deleteExpectedMatchesResult(exampleUsers, uidsToDelete, testDomain))
-    //     );
-    //   });
-    // });
   });
 
   describe("listAllUsers", function() {
-    let wrapped;
+    const wrapped = test.wrap(myFunctions.listAllUsers);
     let usersWithinDomain;
     let usersOutsideDomain;
 
     before(async function() {
-      let { listAllUsers } = require("../index.js");
-      wrapped = test.wrap(listAllUsers);
       usersWithinDomain = await generateUserData(testDomain, 6);
       usersOutsideDomain = await generateUserData(invalidTestDomain, 6);
     });
@@ -298,7 +324,7 @@ describe("Firebase functions", function() {
   });
 
   describe("setEmail", function() {
-    let wrapped;
+    const wrapped = test.wrap(myFunctions.setEmail);
     const userData = [
       { accountType: "OWNER" },
       { accountType: "ADMIN" },
@@ -314,8 +340,6 @@ describe("Firebase functions", function() {
     let users;
 
     before(async function() {
-      let { setEmail } = require("../index.js");
-      wrapped = test.wrap(setEmail);
       ownerUser = await makeTestUsers(testDomain, [userData[0]]);
       adminUser = await makeTestUsers(testDomain, [userData[1]]);
       users = await makeTestUsers(testDomain, userData.slice(2));
@@ -392,7 +416,7 @@ describe("Firebase functions", function() {
   // NOTE: Since we cannot actually access a user's password, these tests rely on the success/failure reports from
   // the function rather than directly checking the results in Firebase.
   describe("resetPasswords", function() {
-    let wrapped;
+    const wrapped = test.wrap(myFunctions.resetPasswords);
     const userData = [
       { accountType: "OWNER" },
       { accountType: "OWNER" },
@@ -412,8 +436,6 @@ describe("Firebase functions", function() {
     let users;
 
     before(async function() {
-      let { resetPasswords } = require("../index.js");
-      wrapped = test.wrap(resetPasswords);
       owners = Object.keys(await makeTestUsers(testDomain, userData.slice(0, 4)));
       admins = Object.keys(await makeTestUsers(testDomain, userData.slice(4, 8)));
       users = Object.keys(await makeTestUsers(testDomain, userData.slice(8)));
@@ -491,13 +513,16 @@ describe("Firebase functions", function() {
   });
 
   describe("deleteFailedUser", function() {
-    let wrapped;
+    const createFailedUser = async () => {
+      let userRecord = await admin.auth().createUser({ email: `${generateRandomString(6)}@simple-subs.com` });
+      return userRecord.uid;
+    }
+    const wrapped = test.wrap(myFunctions.deleteFailedUser);
+
     let successUids;
     let failedUids;
 
     before(async function() {
-      let { deleteFailedUser } = require("../index.js");
-      wrapped = test.wrap(deleteFailedUser);
       failedUids = [await createFailedUser(), await createFailedUser()];
       successUids = Object.keys(await generateUserData(testDomain, 4));
     });
@@ -530,44 +555,217 @@ describe("Firebase functions", function() {
     });
   });
 
-  describe("getUsersByEmail", function() {
-    let wrapped;
-    let usersWithinDomain;
-    let usersOutsideDomain;
+  describe("importUsers", function() {
+    const EXISTING_USER_DATA = [
+      { email: "owner1@simple-subs.com", name: "Bob", accountType: "OWNER" },
+      { email: "admin1@simple-subs.com", name: "Joe", accountType: "ADMIN" },
+      { email: "admin2@simple-subs.com", name: "Dave", accountType: "ADMIN" },
+      { email: "user1@simple-subs.com", name: "Dan", accountType: "USER" },
+      { email: "user2@simple-subs.com", name: "Fred", accountType: "USER" }
+    ];
 
-    before(async function() {
-      let { getUsersByEmail } = require("../index.js");
-      wrapped = test.wrap(getUsersByEmail);
-      usersWithinDomain = await generateUserData(testDomain, 10);
-      usersOutsideDomain = await generateUserData(invalidTestDomain, 10);
+    const IMPORT_DATA = {
+      "owner1@simple-subs.com": { name: "Bobby", accountType: "ADMIN" },
+      "admin1@simple-subs.com": { name: "Joey", accountType: "OWNER" },
+      "admin2@simple-subs.com": { name: "Davey", accountType: "USER" },
+      "user1@simple-subs.com": { name: "Danny", accountType: "ADMIN" },
+      "user2@simple-subs.com": { name: "Freddy", accountType: "OWNER" },
+      "newowner@simple-subs.com": { name: "Emma", accountType: "OWNER" },
+      "newadmin@simple-subs.com": { name: "Emily", accountType: "ADMIN" },
+      "newuser@simple-subs.com": { name: "Emmaline", accountType: "USER" }
+    };
+
+    const wrapped = test.wrap(myFunctions.importUsers);
+    let createdUsers;
+    let updatedUsers;
+    let actualResult;
+
+    const prepareTest = async (accountType) => {
+      await makeTestUsers(testDomain, EXISTING_USER_DATA);
+      let data = { userData: IMPORT_DATA };
+      let context = { auth: { uid: sampleUids[accountType] } };
+
+      let { updated, created } = await wrapped(data, context);
+      createdUsers = created;
+      updatedUsers = updated;
+
+      let emailsToUids = { ...updated, ...created };
+
+      let querySnapshot = await userDataCollection(testDomain).get();
+      let rawResult = collectionToObject(querySnapshot);
+      actualResult = {};
+      for (let email of Object.keys(emailsToUids)) {
+        actualResult[email] = rawResult[emailsToUids[email]];
+      }
+    };
+
+    describe("permission tests", function() {
+      before(async function() {
+        let invalidData = [{ email: "invalid@simple-subs.com", accountType: "USER" }];
+        let ownerData = [{ email: "testowner@simple-subs.com", accountType: "OWNER" }];
+        await makeTestUsers(invalidTestDomain, invalidData);
+        await makeTestUsers(testDomain, ownerData);
+      });
+
+      after(async function() {
+        await cleanUpUsers(invalidTestDomain);
+        await cleanUpUsers(testDomain);
+      });
+
+      it("should throw an error if user is not an admin", function() {
+        let data = {};
+        let context = { auth: { uid: sampleUids.user } };
+        return assert.isRejected(wrapped(data, context), "User is not an admin");
+      });
+
+      it("should throw an error if editing user outside of domain", function() {
+        let data = {
+          userData: {
+            "invalid@simple-subs.com": {
+              accountType: "ADMIN"
+            }
+          }
+        };
+        let context = { auth: { uid: sampleUids.admin } };
+        return assert.isRejected(wrapped(data, context), "Cannot edit users outside of domain");
+      });
+
+      it("should not edit accountType of user's own account", function() {
+        let data = {
+          userData: {
+            "owner@simple-subs.com": {
+              accountType: "USER"
+            }
+          }
+        };
+        let context = { auth: { uid: sampleUids.owner } };
+        return wrapped(data, context).then(async () => {
+          let ownerDoc = await userDataDoc(testDomain, sampleUids.owner).get();
+          assert.equal(ownerDoc.data().accountType, "OWNER");
+        });
+      });
     });
 
-    after(async function() {
-      await cleanUpUsers(testDomain);
-      await cleanUpUsers(invalidTestDomain);
+    describe("data validation tests", function() {
+      before(async function() {
+        await makeTestUsers(testDomain, EXISTING_USER_DATA);
+      })
     });
 
-    it("should throw an error if user is not an admin", function() {
-      let data = {};
-      let context = { auth: { uid: sampleUids.user } };
-      return assert.isRejected(wrapped(data, context), "User is not an admin");
+    describe("when user is admin", function() {
+      const expectedCreatedResult = {
+        "newowner@simple-subs.com": { name: "Emma", accountType: "ADMIN" },
+        "newadmin@simple-subs.com": { name: "Emily", accountType: "ADMIN" },
+        "newuser@simple-subs.com": { name: "Emmaline", accountType: "USER" }
+      };
+
+      const expectedUpdatedResult = {
+        "user1@simple-subs.com": { name: "Danny", accountType: "ADMIN" },
+        "user2@simple-subs.com": { name: "Freddy", accountType: "ADMIN" }
+      };
+
+      before(function() {
+        return prepareTest("admin");
+      });
+
+      after(function() {
+        return cleanUpUsers(testDomain);
+      });
+
+      it("should create users with maximum admin accounts", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedCreatedResult));
+        assert.eventually.isTrue(checkDomains(testDomain, Object.keys(expectedCreatedResult)));
+      });
+
+      it("should update all USER data while only changing USER -> ADMIN accountType", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedUpdatedResult));
+      });
+
+      it("should match expected result with reported result", function() {
+        assert.sameMembers(Object.keys(createdUsers), Object.keys(expectedCreatedResult));
+        assert.sameMembers(Object.keys(updatedUsers), Object.keys(expectedUpdatedResult));
+      });
     });
 
-    it("should return users correctly sorted into found, not found, and different domain", function() {
-      let uidsWithinDomain = Object.keys(usersWithinDomain).slice(0, 3);
-      let uidsOutsideDomain = Object.keys(usersOutsideDomain).slice(0, 3);
-      let queryWithinDomain = uidsWithinDomain.map((uid) => usersWithinDomain[uid].email);
-      let queryOutsideDomain = uidsOutsideDomain.map((uid) => usersOutsideDomain[uid].email);
-      let queryNotFound = ["newuser1@simple-subs.com", "newuser2@simple-subs.com", "newuser3@simple-subs.com"];
-      let data = { emails: [...queryWithinDomain, ...queryOutsideDomain, ...queryNotFound] };
-      let context = { auth: { uid: sampleUids.owner } };
-      return wrapped(data, context).then(({ found, notFound, differentDomain }) => {
-        let expectedFound = arrsToObject(queryWithinDomain, uidsWithinDomain);
-        let expectedNotFound = queryNotFound;
-        let expectedDifferentDomain = queryOutsideDomain;
-        assert.deepEqual(found, expectedFound);
-        assert.sameMembers(notFound, expectedNotFound);
-        assert.sameMembers(differentDomain, expectedDifferentDomain);
+    describe("when user is owner", function() {
+      const expectedCreatedResult = {
+        "newowner@simple-subs.com": { name: "Emma", accountType: "OWNER" },
+        "newadmin@simple-subs.com": { name: "Emily",  accountType: "ADMIN" },
+        "newuser@simple-subs.com": { name: "Emmaline", accountType: "USER" }
+      };
+
+      const expectedUpdatedResult = {
+        "admin1@simple-subs.com": { name: "Joey", accountType: "OWNER" },
+        "admin2@simple-subs.com": { name: "Davey", accountType: "USER" },
+        "user1@simple-subs.com": { name: "Danny", accountType: "ADMIN" },
+        "user2@simple-subs.com": { name: "Freddy", accountType: "OWNER" }
+      };
+
+      before(function() {
+        return prepareTest("owner");
+      });
+
+      after(function() {
+        return cleanUpUsers(testDomain);
+      });
+
+      it("should create users with all types of accounts", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedCreatedResult));
+        assert.eventually.isTrue(checkDomains(testDomain, Object.keys(expectedCreatedResult)));
+      });
+
+      it("should update all user data while changing all accountTypes", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedUpdatedResult));
+      });
+
+      it("should match expected result with reported result", function() {
+        assert.sameMembers(Object.keys(createdUsers), Object.keys(expectedCreatedResult));
+        assert.sameMembers(Object.keys(updatedUsers), Object.keys(expectedUpdatedResult));
+      });
+    });
+
+    // using owner permissions
+    describe("when defaultUser is populated", function() {
+      const populatedDefaultUser = { grade: "9" };
+
+      const expectedCreatedResult = {
+        "newowner@simple-subs.com": { ...populatedDefaultUser, name: "Emma", accountType: "OWNER" },
+        "newadmin@simple-subs.com": { ...populatedDefaultUser, name: "Emily",  accountType: "ADMIN" },
+        "newuser@simple-subs.com": { ...populatedDefaultUser, name: "Emmaline", accountType: "USER" }
+      };
+
+      const expectedUpdatedResult = {
+        "admin1@simple-subs.com": { name: "Joey", accountType: "OWNER" },
+        "admin2@simple-subs.com": { name: "Davey", accountType: "USER" },
+        "user1@simple-subs.com": { name: "Danny", accountType: "ADMIN" },
+        "user2@simple-subs.com": { name: "Freddy", accountType: "OWNER" }
+      };
+
+      const setDefaultUser = (data = {}) => (
+        firestore
+          .collection("domains")
+          .doc(testDomain)
+          .collection("appData")
+          .doc("defaultUser")
+          .set({ ...defaultUserData, ...data })
+      );
+
+      before(async function() {
+        await setDefaultUser(populatedDefaultUser);
+        await prepareTest("owner");
+      });
+
+      after(async function() {
+        await setDefaultUser();
+        await cleanUpUsers(testDomain);
+      });
+
+      it("should populate created users with default user fields", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedCreatedResult));
+      });
+
+      it("should not populate existing users", function() {
+        assert.isTrue(allAreSubset(actualResult, expectedUpdatedResult));
       });
     })
   });

@@ -7,7 +7,8 @@ import {
   setEmail,
   resetPasswordsFunction,
   listAllUsers,
-  updateDomainData
+  updateDomainData,
+  importUsersFunction
 } from "../constants/Firebase";
 import { parseISO } from "../constants/Date";
 import moment from "moment";
@@ -222,6 +223,25 @@ export function setDefaultUser(data, dispatch, domain) {
       console.log("Successfully updated default user data");
       dispatch(setLoading(false));
     }).catch((error) => reportError(error, dispatch));
+}
+
+export async function importUsers(data, dispatch) {
+  dispatch(setLoading(true));
+  let userData = {};
+  for (let user of data) {
+    if (user.email) {
+      let thisUser = { ...user };
+      delete thisUser.email;
+      userData[user.email] = thisUser;
+    }
+  }
+  let { updated, created, errors } = await importUsersFunction(userData);
+  console.log(`Successfully updated ${Object.keys(updated).length} users`);
+  console.log(`Successfully created ${Object.keys(created).length} users`);
+  for (let error of errors) {
+    console.error(error);
+  }
+  dispatch(setLoading(false));
 }
 
 export function orderListener(dispatch, isLoggedIn, domain) {

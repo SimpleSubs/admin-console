@@ -6,13 +6,13 @@ export const TableTypes = {
   BOOLEAN: "BOOLEAN",
   CONDITIONAL: "CONDITIONAL",
   HIDDEN: "HIDDEN"
-}
+};
 
 export const ColumnSizes = {
   SMALL: { minWidth: 1, width: 1, maxWidth: 1 },
   MEDIUM: { minWidth: 150, width: 150, maxWidth: 150 },
   LARGE: { minWidth: 300, width: 300, maxWidth: 300 }
-}
+};
 
 export default function getHeaderValues({ key, title, type = TableTypes.TEXT, size = "MEDIUM" }) {
   return {
@@ -21,4 +21,24 @@ export default function getHeaderValues({ key, title, type = TableTypes.TEXT, si
     type,
     size
   }
+}
+
+export function getTableValue(data = {}, key) {
+  if (!data[key]) {
+    return "";
+  } else if (typeof data[key] === "string") {
+    return '"' + data[key] + '"';
+  } else {
+    return '"' + data[key].join(", ") + '"';
+  }
+}
+
+export function download(rows, name) {
+  let csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
+  let encodedUri = encodeURI(csvContent);
+  let link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${name}.csv`);
+  document.body.appendChild(link); // Required for FF
+  link.click();
 }

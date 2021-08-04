@@ -3,7 +3,7 @@ import { toISO, parseISO } from "../constants/Date";
 import "../stylesheets/Orders.scss";
 import Table from "../components/Table";
 import { OrderColumns } from "../constants/TableConstants";
-import { TableTypes } from "../constants/TableActions";
+import { TableTypes, getTableValue, download } from "../constants/TableActions";
 import moment from "moment";
 import Loading from "./Loading";
 import { connect } from "react-redux";
@@ -36,16 +36,6 @@ function joinIngredients(ingredients, orderOptions) {
         combinedArr.concat(current)
     )
   });
-}
-
-function getTableValue(data = {}, key) {
-  if (!data[key]) {
-    return "";
-  } else if (typeof data[key] === "string") {
-    return '"' + data[key] + '"';
-  } else {
-    return '"' + data[key].join(", ") + '"';
-  }
 }
 
 function getCounts(orders, orderOptions) {
@@ -88,13 +78,7 @@ function downloadOrders(selected, orders, users, orderOptions, userFields) {
     rows.push([...userData, ...orderData]);
   }
   rows = [...rows, ...getCounts(ordersToDownload, orderOptionsWithoutUser)];
-  let csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
-  let encodedUri = encodeURI(csvContent);
-  let link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `SandwichOrders_${toISO(moment())}.csv`);
-  document.body.appendChild(link); // Required for FF
-  link.click();
+  download(rows, `simple_subs_orders_${toISO(moment())}`);
 }
 
 const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateOrder, deleteOrders, domain }) => {
@@ -126,7 +110,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
           if (anySelected) {
             actions.push({
               title: "Delete selected orders",
-              action: () => setCarefulSubmit(() => () => deleteSelected(selected))
+              action: () => setCarefulSubmit(() => deleteSelected(selected))
             });
           }
           return actions;

@@ -2,11 +2,41 @@ import React from "react";
 import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
-import { deleteUsers, resetPasswords, updateUser } from "../redux/Actions";
+import { deleteUsers, resetPasswords, updateUser, importUsers } from "../redux/Actions";
 import Loading from "./Loading";
 import { UserColumns } from "../constants/TableConstants";
+import { getTableValue, download } from "../constants/TableActions";
+import FileModal from "../components/FileModal";
 
-const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswords, updateUser, domain }) => {
+function downloadUsers(selected, users, userFields) {
+  const userTitles = userFields.map(({ title }) => title);
+  let usersToDownload;
+  // Download all selected orders
+  if (Object.keys(selected).length > 0) {
+    usersToDownload = users.filter((user, i) => selected[i]);
+    // Download today's orders if nothing is selected
+  } else {
+    usersToDownload = [...users];
+  }
+  let rows = [userTitles];
+  for (let user of usersToDownload) {
+    let userData = userFields.map(({ key }) => getTableValue(user, key));
+    rows.push(userData);
+  }
+  download(rows, "simple_subs_users");
+}
+
+function transformHeader(header, userFields) {
+  let potentialKeys = userFields.filter(({ title }) => title.trim().toLowerCase() === header.trim().toLowerCase());
+  if (potentialKeys.length === 0) {
+    return header;
+  } else {
+    return potentialKeys[0].key;
+  }
+}
+
+const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswords, updateUser, importUsers, domain }) => {
+  const [fileModalOpen, setFileModal] = React.useState(false);
   const userData = React.useMemo(
     () => (users && userFields) ? Object.keys(users).map((uid) => ({ ...users[uid], uid })) : null,
     [userFields, users]
@@ -33,13 +63,21 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
           let actions = [
             {
               title: `Reset ${anySelected ? "selected" : "all"} passwords`,
-              action: () => setCarefulSubmit(() => () => resetSelected(selected))
-            }
+              action: () => setCarefulSubmit(() => resetSelected(selected))
+            },
+            {
+              title: `Download ${anySelected ? "selected" : "all"} users`,
+              action: () => downloadUsers(selected, userData, userFields)
+            },
+            {
+              title: "Import users",
+              action: () => setFileModal(true)
+            },
           ];
           if (anySelected) {
             actions.push({
               title: "Delete selected users",
-              action: () => setCarefulSubmit(() => () => deleteSelected(selected))
+              action: () => setCarefulSubmit(() => deleteSelected(selected))
             });
           }
           return actions;
@@ -57,6 +95,12 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
 
   return (
     <div id={"Users"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
+      <FileModal
+        open={fileModalOpen}
+        closeModal={() => setFileModal(false)}
+        transformHeader={(header) => transformHeader(header, userFields)}
+        onSubmit={importUsers}
+      />
       <Table
         data={userData}
         columns={columns}
@@ -68,7 +112,7 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
         defaultSortCol={"grade"}
       />
     </div>
-  )
+  );
 };
 
 const mapStateToProps = ({ users, appSettings, user, domain }) => ({
@@ -81,7 +125,8 @@ const mapStateToProps = ({ users, appSettings, user, domain }) => ({
 const mapDispatchToProps = (dispatch) => ({
   deleteUsers: (selected, uid) => deleteUsers(selected, uid, dispatch),
   resetPasswords: (uids) => resetPasswords(uids, dispatch),
-  updateUser: (uid, userData, prevData, domain) => updateUser(uid, userData, prevData, dispatch, domain)
+  updateUser: (uid, userData, prevData, domain) => updateUser(uid, userData, prevData, dispatch, domain),
+  importUsers: (data) => importUsers(data, dispatch)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Users);

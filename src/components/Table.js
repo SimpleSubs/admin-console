@@ -212,6 +212,8 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
   const [dragOverIndex, setDragOverIndex] = React.useState(-1);
   const prevSelectedRef = React.useRef(null);
 
+  const setCarefulSubmitWrapped = (value) => setCarefulSubmit(() => value);
+
   const {
     getTableProps,
     getTableBodyProps,
@@ -329,7 +331,7 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
       <WarningModal
         open={!!carefulSubmit}
         onSubmit={carefulSubmit}
-        closeModal={() => setCarefulSubmit(null)}
+        closeModal={() => setCarefulSubmitWrapped(null)}
       />
       <EditRowForm
         fields={[...columns, ...extraFields]}
@@ -357,7 +359,7 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
                   <MenuButtons.Left
                     selected={selectedRowIds}
                     openModal={() => toggleModal(true)}
-                    setCarefulSubmit={setCarefulSubmit}
+                    setCarefulSubmit={setCarefulSubmitWrapped}
                   />
                 )}
               </div>
@@ -370,7 +372,7 @@ const Table = ({ columns = [], data = [], MenuButtons = {}, title, custom = fals
                 <MenuButtons.Right
                   selected={selectedRowIds}
                   openModal={() => toggleModal(true)}
-                  setCarefulSubmit={setCarefulSubmit}
+                  setCarefulSubmit={setCarefulSubmitWrapped}
                 />
               )}
             </div>
