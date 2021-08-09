@@ -11,6 +11,13 @@
           "simple-subs"
         ]
       }
+    },
+    "simplesubs-testing": {
+      "hosting": {
+        "staging": [
+          "simplesubs-testing"
+        ]
+      }
     }
   }
 }
