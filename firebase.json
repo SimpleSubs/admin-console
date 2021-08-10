@@ -1,6 +1,5 @@
 {
   "hosting": {
-    "site": "simple-subs",
     "public": "build",
     "ignore": [
       "firebase.json",
