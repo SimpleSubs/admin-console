@@ -1,4 +1,5 @@
 @use "index";
+@use "sass:color";
 
 form {
   input:not([type=button]):not([type=submit]):not([type=checkbox]), select {
@@ -30,6 +31,7 @@ form {
       -moz-appearance:none;
       appearance:none;
       position: relative;
+      padding-right: 35px;
     }
     .caret {
       pointer-events: none;
@@ -44,6 +46,25 @@ form {
       border-top: 5px solid #000;
       border-right: 5px solid transparent;
       border-left: 5px solid transparent;
+    }
+  }
+  .time-field > div {
+    flex-direction: row;
+    align-items: stretch;
+    & > * {
+      margin: 0 5px;
+    }
+    label > span {
+      display: none;
+    }
+    p {
+      justify-content: center;
+      font-weight: bold;
+      font-size: 24px;
+    }
+    select {
+      padding-right: 40px;
+      width: fit-content;
     }
   }
 }
@@ -144,6 +165,142 @@ form {
     .checkbox {
       margin-right: 10px;
       flex: 0;
+    }
+  }
+}
+
+.schedule-field {
+  margin: 0 !important;
+  table {
+    box-shadow: none;
+  }
+  tr {
+    background-color: transparent !important;
+    align-items: flex-start;
+    .weekday-selector {
+      border: none;
+      background-color: index.$textInputColor;
+      width: 50px;
+      height: 50px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1000px;
+      cursor: pointer;
+      font-size: 18px;
+      &:hover {
+        background-color: color.adjust(index.$textInputColor, $lightness: -10%);
+      }
+    }
+    select {
+      width: fit-content;
+    }
+    .hide-unselected, .hide-default {
+      visibility: hidden;
+    }
+    &.selected {
+      .weekday-selector {
+        background-color: index.$lightAccentColor;
+        &:hover {
+          background-color: color.adjust(index.$lightAccentColor, $alpha: -0.3);
+        }
+      }
+      .hide-unselected {
+        visibility: visible;
+        &.hide-default {
+          visibility: hidden;
+        }
+      }
+      &.custom .hide-default {
+        visibility: visible;
+      }
+    }
+  }
+}
+
+.schedule-form {
+  form span, .holidays span {
+    font-weight: bold;
+    padding: 10px;
+  }
+
+  .extra-fields-container {
+    flex-direction: row;
+
+    .extra-field {
+      margin: 20px 20px 20px 0;
+    }
+  }
+
+  .submit-buttons {
+    flex-direction: row;
+    justify-content: flex-end;
+    input {
+      padding: 12px;
+      margin-left: 10px;
+      &.cancel {
+        background-color: transparent;
+        border: 1px index.$checkboxText solid !important;
+        color: index.$checkboxText !important;
+
+        &:hover {
+          opacity: 0.8;
+        }
+      }
+    }
+  }
+
+  .holidays {
+    button {
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 3px;
+      background-color: index.$textInputColor;
+      font-size: 20px;
+      align-items: center;
+      justify-content: center;
+      &:hover {
+        background-color: color.adjust(index.$textInputColor, $lightness: -10%);
+      }
+      &[type=submit] {
+        margin-left: 20px;
+        background-color: index.$accentColor;
+        &:hover {
+          background-color: index.$darkAccentColor;
+        }
+      }
+    }
+
+    .holiday-table {
+      box-shadow: none;
+      margin: 0;
+
+      tr {
+        background-color: transparent;
+      }
+
+      td {
+        padding: 10px;
+
+        &.date {
+          flex: 1;
+          text-align: left;
+          align-items: flex-start;
+        }
+      }
+    }
+
+    .error {
+      margin-left: 10px;
+    }
+
+    .inputs-container {
+      flex-direction: row;
+      margin: 10px 0;
+      padding: 10px;
+
+      input[type=text] {
+        width: unset;
+      }
     }
   }
 }

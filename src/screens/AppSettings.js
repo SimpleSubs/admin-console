@@ -6,8 +6,16 @@ import { OrderOptionColumns, UserFieldColumns, PasswordField } from "../constant
 import DomainFields from "../constants/DomainFields";
 import SettingsForm from "../components/SettingsForm";
 import StyledButton from "../components/StyledButton";
-import { setCutoffTime, setUserFields, setOrderOptions, setDomainData, setDefaultUser } from "../redux/Actions";
-import Picker from "../components/Picker";
+import { LunchSchedule, OrderSchedule } from "../components/ScheduleForm";
+import {
+  setCutoffTime,
+  setUserFields,
+  setOrderOptions,
+  setDomainData,
+  setDefaultUser,
+  setLunchSchedule,
+  setOrderSchedule
+} from "../redux/Actions";
 import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
 
@@ -38,87 +46,16 @@ const DomainForm = ({ domain, setDomainData }) => (
 const DefaultUserForm = ({ userFields, defaultUser, setDefaultUser }) => {
   const processedFields = userFields.map((field) => ({ ...field, type: field.inputType, required: false }));
   return (
-  <SettingsForm
-    data={defaultUser}
-    onSubmit={setDefaultUser}
-    title={"Default User"}
-    fields={[PasswordField, ...processedFields]}
-    id={"default-user-form"}
-    checkRequired={false}
-  />
-)
-}
-
-const CutoffTime = ({ cutoffTime, setCutoffTime }) => {
-  const [showError, toggleError] = React.useState(false);
-  const [state, setState] = React.useState(toStateFormat(cutoffTime));
-
-  const submit = (e) => {
-    e.preventDefault();
-    let { hours, minutes, isAM } = state;
-    if (isNaN(hours) || isNaN(minutes) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
-      toggleError(true);
-      return;
-    }
-    toggleError(false);
-    if (isAM && hours === 12) {
-      hours = 0;
-    } else if (!isAM && hours !== 12) {
-      hours += 12;
-    }
-    setCutoffTime({ hours, minutes });
-  };
-  const setHours = (e) => {
-    setState({ ...state, hours: parseInt(e.target.value) });
-  };
-  const setMinutes = (e) => {
-    setState({ ...state, minutes: parseInt(e.target.value) });
-  };
-  const setAMPM = (e) => {
-    setState({...state, isAM: e.target.value === "am"});
-  };
-
-  React.useEffect(() => setState(toStateFormat(cutoffTime)), [cutoffTime]);
-
-  return (
-    <div className={"cutoff-time single-row-setting"}>
-      <h3 className={"title"}>Cutoff Time</h3>
-      <div className={"form-wrapper"}>
-        <form onSubmit={submit}>
-          <label>
-            <span>Hours</span>
-            <input
-              type={"number"}
-              placeholder={"Hour"}
-              id={"hour"}
-              name={"hour"}
-              value={isNaN(state.hours) ? "" : state.hours}
-              onChange={setHours}
-            />
-          </label>
-          <p>:</p>
-          <label>
-            <span>Minutes</span>
-            <input
-              type={"number"}
-              placeholder={"Minute"}
-              id={"minute"}
-              name={"minute"}
-              value={(!isNaN(state.minutes) && state.minutes < 10 ? "0" : "") + state.minutes}
-              onChange={setMinutes}
-            />
-          </label>
-          <Picker name={"amPM"} id={"amPM"} value={state.isAM ? "am" : "pm"} onChange={setAMPM}>
-            <option value={"am"}>AM</option>
-            <option value={"pm"}>PM</option>
-          </Picker>
-          <input className={"styled-button"} type={"submit"} value={"Update"} disabled={state === toStateFormat(cutoffTime)} />
-        </form>
-        <p className={"error " + (showError ? "shown" : "hidden")}>Please enter a valid time</p>
-      </div>
-    </div>
+    <SettingsForm
+      data={defaultUser}
+      onSubmit={setDefaultUser}
+      title={"Default User"}
+      fields={[PasswordField, ...processedFields]}
+      id={"default-user-form"}
+      checkRequired={false}
+    />
   )
-}
+};
 
 const OrderOptionsTable = ({ orderOptions, setOrderOptions }) => {
   const editOrderOption = (index, editedOption) => {
@@ -210,13 +147,14 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData, setDefaultUser }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData, setDefaultUser, setLunchSchedule, setOrderSchedule }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
       <DomainForm domain={domain} setDomainData={(data) => setDomainData(data, domain.id)} />
       <DefaultUserForm defaultUser={appSettings.defaultUser} userFields={appSettings.userFields} setDefaultUser={(data) => setDefaultUser(data, domain.id)} />
-      <CutoffTime cutoffTime={appSettings.cutoffTime} setCutoffTime={(time) => setCutoffTime(time, domain.id)} />
+      <LunchSchedule lunchSchedule={appSettings.lunchSchedule} setLunchSchedule={(data) => setLunchSchedule(data, domain.id)} />
+      <OrderSchedule orderSchedule={appSettings.orderSchedule} setOrderSchedule={(data) => setOrderSchedule(data, domain.id)} />
       <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain.id)} />
       <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain.id)} />
     </div>
@@ -232,7 +170,9 @@ const mapDispatchToProps = (dispatch) => ({
   setOrderOptions: (newOptions, domain) => setOrderOptions(newOptions, dispatch, domain),
   setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain),
   setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId),
-  setDefaultUser: (data, domain) => setDefaultUser(data, dispatch, domain)
+  setDefaultUser: (data, domain) => setDefaultUser(data, dispatch, domain),
+  setLunchSchedule: (data, domain) => setLunchSchedule(data, dispatch, domain),
+  setOrderSchedule: (data, domain) => setOrderSchedule(data, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppSettings);
