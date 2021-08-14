@@ -1,5 +1,4 @@
 @use "index";
-@use "sass:color";
 
 $contentContainerPadding: 20px;
 
@@ -57,7 +56,7 @@ nav {
         right: 0;
         height: 100%;
         width: 100%;
-        background-color: color.adjust(index.$accentColor, $lightness: 15%);
+        background-color: index.$lightAccentColor;
         border-right: 10px solid index.$accentColor;
         border-top-left-radius: 100px;
         border-bottom-left-radius: 100px;

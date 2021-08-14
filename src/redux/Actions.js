@@ -10,7 +10,7 @@ import {
   updateDomainData,
   importUsersFunction
 } from "../constants/Firebase";
-import { parseISO } from "../constants/Date";
+import { ISO_FORMAT, parseISO, firebaseTimeToStateTime, stateTimeToFirebaseTime } from "../constants/Date";
 import moment from "moment";
 
 const Actions = {
@@ -56,10 +56,11 @@ function updateAppSettings(appSettings) {
   return {
     type: Actions.UPDATE_APP_SETTINGS,
     appSettings: {
-      cutoffTime: appSettings.cutoffTime || { hours: 0, minutes: 0 },
       defaultUser: appSettings.defaultUser || {},
       orderOptions: appSettings.orderOptions || [],
-      userFields: appSettings.userFields || []
+      userFields: appSettings.userFields || [],
+      lunchSchedule: appSettings.lunchSchedule || {},
+      orderSchedule: appSettings.orderSchedule || {}
     }
   }
 }
@@ -180,15 +181,6 @@ export function resetPasswords(uids, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
-export function setCutoffTime(time, dispatch, domain) {
-  dispatch(setLoading(true));
-  domainData(domain).collection("appData").doc("cutoffTime").set(time)
-    .then(() => {
-      console.log("Successfully updated cutoff time");
-      dispatch(setLoading(false));
-    }).catch((error) => reportError(error, dispatch));
-}
-
 export function setOrderOptions(newOptions, dispatch, domain) {
   dispatch(setLoading(true));
   domainData(domain).collection("appData").doc("orderOptions").set(arrayToObject(newOptions))
@@ -225,6 +217,26 @@ export function setDefaultUser(data, dispatch, domain) {
     }).catch((error) => reportError(error, dispatch));
 }
 
+export function setLunchSchedule(data, dispatch, domain) {
+  dispatch(setLoading(true));
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  domainData(domain).collection("appData").doc("lunchSchedule").set(dataToPush)
+    .then(() => {
+      console.log("Successfully updated lunch schedule data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function setOrderSchedule(data, dispatch, domain) {
+  dispatch(setLoading(true));
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  domainData(domain).collection("appData").doc("orderSchedule").set(dataToPush)
+    .then(() => {
+      console.log("Successfully updated order schedule data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error.dispatch));
+}
+
 export async function importUsers(data, dispatch) {
   dispatch(setLoading(true));
   let userData = {};
@@ -247,19 +259,12 @@ export async function importUsers(data, dispatch) {
 export function orderListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
   return domainData(domain).collection("orders")
+    .where("date", ">=", moment().format(ISO_FORMAT))
     .onSnapshot((querySnapshot) => {
-      let orders = [];
-      querySnapshot.forEach((doc) => {
-        let data = doc.data();
-        // Filter out all orders before today
-        if (!parseISO(data.date).isBefore(moment(), "day")) {
-          orders.push({
-            ...doc.data(),
-            key: doc.id
-          });
-        }
-      });
-      dispatch(updateOrders(orders));
+      dispatch(updateOrders(querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        key: doc.id
+      }))));
     });
 }
 
@@ -299,11 +304,36 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
     .onSnapshot((querySnapshot) => {
       dispatch(setLoading(true));
       let appSettings = {};
+      let data;
       querySnapshot.forEach((doc) => {
-        if (doc.id === "cutoffTime" || doc.id === "defaultUser") {
-          appSettings[doc.id] = doc.data();
-        } else {
-          appSettings[doc.id] = Object.values(doc.data());
+        switch (doc.id) {
+          case "cutoffTime":
+          case "defaultUser":
+            appSettings[doc.id] = doc.data();
+            break;
+          case "orderSchedule":
+            data = doc.data() || {};
+            appSettings[doc.id] = {
+              ...data,
+              defaultTime: firebaseTimeToStateTime(data.defaultTime)
+            };
+            break;
+          // Filter out holidays before today
+          case "lunchSchedule":
+            data = doc.data() || {};
+            appSettings[doc.id] = {
+              ...data,
+              defaultTime: firebaseTimeToStateTime(data.defaultTime),
+              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day"))
+            };
+            break;
+          // Order options/user fields are stored as objects with the index as keys
+          case "orderOptions":
+          case "userFields":
+            appSettings[doc.id] = Object.values(doc.data());
+            break;
+          default:
+            break;
         }
       });
       dispatch(updateAppSettings(appSettings));
