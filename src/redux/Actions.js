@@ -56,7 +56,6 @@ function updateAppSettings(appSettings) {
   return {
     type: Actions.UPDATE_APP_SETTINGS,
     appSettings: {
-      cutoffTime: appSettings.cutoffTime || { hours: 0, minutes: 0 },
       defaultUser: appSettings.defaultUser || {},
       orderOptions: appSettings.orderOptions || [],
       userFields: appSettings.userFields || [],
@@ -180,15 +179,6 @@ export function resetPasswords(uids, dispatch) {
     console.log(`Failed to reset ${failed.length} passwords.`);
     dispatch(setLoading(false));
   }).catch((error) => reportError(error, dispatch));
-}
-
-export function setCutoffTime(time, dispatch, domain) {
-  dispatch(setLoading(true));
-  domainData(domain).collection("appData").doc("cutoffTime").set(time)
-    .then(() => {
-      console.log("Successfully updated cutoff time");
-      dispatch(setLoading(false));
-    }).catch((error) => reportError(error, dispatch));
 }
 
 export function setOrderOptions(newOptions, dispatch, domain) {

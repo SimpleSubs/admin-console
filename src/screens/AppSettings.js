@@ -8,7 +8,6 @@ import SettingsForm from "../components/SettingsForm";
 import StyledButton from "../components/StyledButton";
 import { LunchSchedule, OrderSchedule } from "../components/ScheduleForm";
 import {
-  setCutoffTime,
   setUserFields,
   setOrderOptions,
   setDomainData,
@@ -18,20 +17,6 @@ import {
 } from "../redux/Actions";
 import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
-
-function toStateFormat(cutoffTime) {
-  if (!cutoffTime || cutoffTime === {}) {
-    return {};
-  }
-  let { hours, minutes } = cutoffTime;
-  let isAM = hours < 12;
-  if (hours === 0) {
-    hours = 12;
-  } else if (!isAM) {
-    hours -= 12;
-  }
-  return { hours, minutes, isAM };
-}
 
 const DomainForm = ({ domain, setDomainData }) => (
   <SettingsForm
@@ -147,7 +132,7 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, domain, setCutoffTime, setOrderOptions, setUserFields, setDomainData, setDefaultUser, setLunchSchedule, setOrderSchedule }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, setOrderOptions, setUserFields, setDomainData, setDefaultUser, setLunchSchedule, setOrderSchedule }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
@@ -166,7 +151,6 @@ const mapStateToProps = ({ appSettings, domain }) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  setCutoffTime: (time, domain) => setCutoffTime(time, dispatch, domain),
   setOrderOptions: (newOptions, domain) => setOrderOptions(newOptions, dispatch, domain),
   setUserFields: (newFields, domain) => setUserFields(newFields, dispatch, domain),
   setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId),
