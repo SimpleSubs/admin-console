@@ -4,43 +4,49 @@ import TimeField from "./TimeField";
 import Picker from "./Picker";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt, faPlusSquare } from "@fortawesome/free-regular-svg-icons";
-import { ISO_FORMAT, toSimple } from "../constants/Date";
+import { ISO_FORMAT, toStandard } from "../constants/Date";
 import "../stylesheets/Forms.scss";
 
-const ScheduleField = ({ formName, state = {}, setState, defaultTime = { hours: 7, minutes: 30, isAM: true } }) => {
+const ScheduleField = ({ formName, state = (new Array(7)).fill(null), setState, defaultTime = { hours: 7, minutes: 30, isAM: true } }) => {
   const weekdays = moment.weekdays();
   const toggleWeekday = (day) => {
-    setState({ ...state, [day]: (state[day] ? null : "default") });
+    let newState = [...state];
+    newState[day] = state[day] ? null : "default"
+    setState(newState);
   };
   const setDefaultCustom = (e, day) => {
+    let newState = [...state];
     if (e.target.value === "default") {
-      setState({ ...state, [day]: "default" });
+      newState[day] = "default";
     } else {
-      setState({ ...state, [day]: defaultTime });
+      newState[day] = defaultTime;
     }
+    setState(newState);
   }
   const setCustomTime = (value, day) => {
-    setState({ ...state, [day]: value });
+    let newState = [...state];
+    newState[day] = value;
+    setState(newState);
   }
   return (
     <form className={"schedule-field"}>
       <table>
         <tbody>
-          {weekdays.map((day) => (
-            <tr className={`${state[day] ? "selected" : ""} ${state[day] !== "default" ? "custom" : ""}`} key={day}>
+          {state.map((status, i) => (
+            <tr className={`${status ? "selected" : ""} ${status !== "default" ? "custom" : ""}`} key={i}>
               <td>
                 <input
                   className={"weekday-selector"}
                   type={"button"}
-                  value={day[0].toUpperCase()}
-                  name={day}
-                  onClick={() => toggleWeekday(day)}
+                  value={weekdays[i][0].toUpperCase()}
+                  name={weekdays[i]}
+                  onClick={() => toggleWeekday(i)}
                 />
               </td>
               <td className={"hide-unselected"}>
                 <Picker
-                  value={state[day] === "default" ? "default" : "custom"}
-                  onChange={(e) => setDefaultCustom(e, day)}
+                  value={status === "default" ? "default" : "custom"}
+                  onChange={(e) => setDefaultCustom(e, i)}
                 >
                   <option value={"default"}>Use default</option>
                   <option value={"custom"}>Custom</option>
@@ -49,9 +55,9 @@ const ScheduleField = ({ formName, state = {}, setState, defaultTime = { hours: 
               <td className={"hide-unselected hide-default"}>
                 <TimeField
                   formName={formName}
-                  fieldName={day}
-                  setState={(value) => setCustomTime(value, day)}
-                  state={state[day] && state[day] !== "default" ? state[day] : {}}
+                  fieldName={weekdays[i]}
+                  setState={(value) => setCustomTime(value, i)}
+                  state={status && status !== "default" ? status : {}}
                   showError={false}
                 />
               </td>
@@ -87,7 +93,7 @@ const Holidays = ({ holidays = [], addHoliday, removeHoliday }) => {
         <tbody>
           {holidays.length > 0 && holidays.map((date) => (
             <tr key={date}>
-              <td className={"date"}>{toSimple(date)}</td>
+              <td className={"date"}>{toStandard(date)}</td>
               <td>
                 <button onClick={() => removeHoliday(date)}>
                   <FontAwesomeIcon icon={faTrashAlt} />

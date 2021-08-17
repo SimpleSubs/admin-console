@@ -2,7 +2,7 @@ import React from "react";
 import Table from "../components/Table";
 import HamburgerButton from "../components/HamburgerButton";
 import { connect } from "react-redux";
-import { OrderOptionColumns, UserFieldColumns, PasswordField } from "../constants/TableConstants";
+import { UserFieldColumns, PasswordField } from "../constants/TableConstants";
 import DomainFields from "../constants/DomainFields";
 import SettingsForm from "../components/SettingsForm";
 import StyledButton from "../components/StyledButton";
@@ -13,10 +13,14 @@ import {
   setDomainData,
   setDefaultUser,
   setLunchSchedule,
-  setOrderSchedule
+  setOrderSchedule,
+  addMenu,
+  editMenu,
+  deleteMenu
 } from "../redux/Actions";
 import "../stylesheets/AppSettings.scss";
 import Loading from "./Loading";
+import OrderOptions from "../components/OrderOptions";
 
 const DomainForm = ({ domain, setDomainData }) => (
   <SettingsForm
@@ -40,51 +44,6 @@ const DefaultUserForm = ({ userFields, defaultUser, setDefaultUser }) => {
       checkRequired={false}
     />
   )
-};
-
-const OrderOptionsTable = ({ orderOptions, setOrderOptions }) => {
-  const editOrderOption = (index, editedOption) => {
-    let newOptions = [...orderOptions];
-    if (index !== null) {
-      newOptions[index] = editedOption;
-    } else {
-      newOptions.push(editedOption);
-    }
-    setOrderOptions(newOptions);
-  };
-
-  const deleteOrderOptions = (selected) => {
-    let newOptions = Object.keys(selected).length > 0 ?
-      orderOptions.filter((option, index) => !selected[index]) :
-      [];
-    setOrderOptions(newOptions);
-  }
-
-  const MenuButtons = {
-    Left: ({ openModal }) => <StyledButton title={"Create"} icon={"fa-plus"} onClick={openModal} />,
-    Right: ({ selected, setCarefulSubmit }) => (
-      <HamburgerButton
-        selected={selected}
-        actions={(anySelected) => [{
-          title: `Delete ${anySelected ? "selected" : "all"} order fields`,
-          action: () => setCarefulSubmit(() => deleteOrderOptions(selected))
-        }]}
-      />
-    )
-  };
-
-  return (
-    <Table
-      id={"order-options-table"}
-      custom
-      data={orderOptions}
-      columns={OrderOptionColumns}
-      title={"Order Fields"}
-      MenuButtons={MenuButtons}
-      onEdit={editOrderOption}
-      pushState={(newState) => setOrderOptions(newState)}
-    />
-  );
 };
 
 const UserFieldsTable = ({ userFields, setUserFields }) => {
@@ -132,22 +91,46 @@ const UserFieldsTable = ({ userFields, setUserFields }) => {
   );
 };
 
-const AppSettings = ({ navbarHeight, appSettings, domain, setOrderOptions, setUserFields, setDomainData, setDefaultUser, setLunchSchedule, setOrderSchedule }) => (
+const AppSettings = ({ navbarHeight, appSettings, domain, menus, setOrderOptions, setUserFields, setDomainData, setDefaultUser, setLunchSchedule, setOrderSchedule, addMenu, editMenu, deleteMenu }) => (
   !appSettings ?
     <Loading /> :
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
-      <DomainForm domain={domain} setDomainData={(data) => setDomainData(data, domain.id)} />
-      <DefaultUserForm defaultUser={appSettings.defaultUser} userFields={appSettings.userFields} setDefaultUser={(data) => setDefaultUser(data, domain.id)} />
-      <LunchSchedule lunchSchedule={appSettings.lunchSchedule} setLunchSchedule={(data) => setLunchSchedule(data, domain.id)} />
-      <OrderSchedule orderSchedule={appSettings.orderSchedule} setOrderSchedule={(data) => setOrderSchedule(data, domain.id)} />
-      <OrderOptionsTable orderOptions={appSettings.orderOptions} setOrderOptions={(newOptions) => setOrderOptions(newOptions, domain.id)} />
-      <UserFieldsTable userFields={appSettings.userFields} setUserFields={(newFields) => setUserFields(newFields, domain.id)} />
+      <OrderOptions
+        orderOptions={appSettings.orderOptions}
+        menus={menus}
+        setOrderOptions={(data) => setOrderOptions(data, domain.id)}
+        addMenu={(date) => addMenu(date, domain.id)}
+        editMenu={(id, data) => editMenu(id, data, domain.id)}
+        deleteMenu={(id) => deleteMenu(id, domain.id)}
+      />
+      <UserFieldsTable
+        userFields={appSettings.userFields}
+        setUserFields={(newFields) => setUserFields(newFields, domain.id)}
+      />
+      <LunchSchedule
+        lunchSchedule={appSettings.lunchSchedule}
+        setLunchSchedule={(data) => setLunchSchedule(data, domain.id)}
+      />
+      <OrderSchedule
+        orderSchedule={appSettings.orderSchedule}
+        setOrderSchedule={(data) => setOrderSchedule(data, domain.id)}
+      />
+      <DefaultUserForm
+        defaultUser={appSettings.defaultUser}
+        userFields={appSettings.userFields}
+        setDefaultUser={(data) => setDefaultUser(data, domain.id)}
+      />
+      <DomainForm
+        domain={domain}
+        setDomainData={(data) => setDomainData(data, domain.id)}
+      />
     </div>
 );
 
-const mapStateToProps = ({ appSettings, domain }) => ({
+const mapStateToProps = ({ appSettings, domain, menus }) => ({
   appSettings,
-  domain
+  domain,
+  menus
 });
 
 const mapDispatchToProps = (dispatch) => ({
@@ -156,7 +139,10 @@ const mapDispatchToProps = (dispatch) => ({
   setDomainData: (data, domainId) => setDomainData(data, dispatch, domainId),
   setDefaultUser: (data, domain) => setDefaultUser(data, dispatch, domain),
   setLunchSchedule: (data, domain) => setLunchSchedule(data, dispatch, domain),
-  setOrderSchedule: (data, domain) => setOrderSchedule(data, dispatch, domain)
+  setOrderSchedule: (data, domain) => setOrderSchedule(data, dispatch, domain),
+  addMenu: (date, domain) => addMenu(date, dispatch, domain),
+  editMenu: (id, data, domain) => editMenu(id, data, dispatch, domain),
+  deleteMenu: (id, domain) => deleteMenu(id, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppSettings);

@@ -69,3 +69,42 @@
     }
   }
 }
+
+.hamburger-container {
+  flex-direction: row;
+  align-items: center;
+
+  .checkbox-container {
+    margin-right: 30px;
+    align-items: center;
+    flex-direction: row;
+    font-weight: normal;
+    font-size: 18px;
+
+    p {
+      margin-right: 10px;
+    }
+  }
+}
+
+.order-options-form {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+
+    .button {
+      flex: 1;
+      flex-direction: row;
+      &:nth-of-type(2) {
+        justify-content: flex-start;
+      }
+      &:nth-of-type(3) {
+        justify-content: flex-end;
+      }
+    }
+  }
+  .simple-form, .warning-modal {
+    padding: 60px;
+  }
+}

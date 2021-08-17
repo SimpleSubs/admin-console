@@ -244,11 +244,12 @@ const SimpleForm = ({ fields, id, prevData = {}, onSubmit = () => {}, extraParam
       onClick={(e) => e.stopPropagation()}
       onSubmit={submit}
     >
-      {fields.map((field) => (
+      {fields.map((field, i) => (
         <FormRow
           {...field}
           fieldKey={field.key}
           id={id}
+          key={i}
           state={state}
           setState={setState}
           extraParams={extraParams}
