@@ -17,6 +17,7 @@ const Actions = {
   UPDATE_ORDERS: "UPDATE_ORDERS",
   UPDATE_USERS: "UPDATE_USERS",
   UPDATE_APP_SETTINGS: "UPDATE_APP_SETTINGS",
+  UPDATE_MENUS: "UPDATE_MENUS",
   SET_DOMAIN: "SET_DOMAIN",
   SET_USER: "SET_USER",
   SET_LOADING: "SET_LOADING"
@@ -55,14 +56,15 @@ function updateUsers(users) {
 function updateAppSettings(appSettings) {
   return {
     type: Actions.UPDATE_APP_SETTINGS,
-    appSettings: {
-      defaultUser: appSettings.defaultUser || {},
-      orderOptions: appSettings.orderOptions || [],
-      userFields: appSettings.userFields || [],
-      lunchSchedule: appSettings.lunchSchedule || {},
-      orderSchedule: appSettings.orderSchedule || {}
-    }
-  }
+    appSettings
+  };
+}
+
+function updateMenus(menus) {
+  return {
+    type: Actions.UPDATE_MENUS,
+    menus
+  };
 }
 
 function setDomain(domain) {
@@ -132,7 +134,6 @@ export function deleteUsers(uidsToDelete, myUid, dispatch) {
 export function updateOrder(id, order, dispatch, domain) {
   dispatch(setLoading(true));
   let dataToPush = { ...order };
-  delete dataToPush.user;
   domainData(domain).collection("orders").doc(id)
     .set(dataToPush)
     .then(() => {
@@ -181,11 +182,43 @@ export function resetPasswords(uids, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
-export function setOrderOptions(newOptions, dispatch, domain) {
+export function setOrderOptions(data, dispatch, domain) {
   dispatch(setLoading(true));
-  domainData(domain).collection("appData").doc("orderOptions").set(arrayToObject(newOptions))
+  domainData(domain).collection("appData").doc("orderOptions")
+    .update(data)
     .then(() => {
       console.log("Successfully updated order fields");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function addMenu(date, dispatch, domain) {
+  dispatch(setLoading(true));
+  const sunday = parseISO(date).day(0).format(ISO_FORMAT);
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu")
+    .add({ active: [sunday] })
+    .then(() => {
+      console.log("Successfully created menu");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function deleteMenu(id, dispatch, domain) {
+  dispatch(setLoading(true));
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu").doc(id)
+    .delete()
+    .then(() => {
+      console.log("Successfully deleted menu");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function editMenu(id, data, dispatch, domain) {
+  dispatch(setLoading(true));
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu").doc(id)
+    .update(data)
+    .then(() => {
+      console.log("Successfully updated menu data");
       dispatch(setLoading(false));
     }).catch((error) => reportError(error, dispatch));
 }
@@ -298,17 +331,46 @@ export function usersListener(dispatch, isLoggedIn, domain) {
     });
 }
 
+export function dynamicMenuListener(dispatch, dynamic, domain) {
+  if (!dynamic) {
+    // Return empty function to mimic unmounting listener (for React.useEffect)
+    return () => {};
+  }
+  return domainData(domain)
+    .collection("appData")
+    .doc("orderOptions")
+    .collection("dynamicMenu")
+    .onSnapshot((querySnapshot) => {
+      dispatch(setLoading(true));
+      const menus = [];
+      querySnapshot.forEach((doc) => {
+        const { active, ...data } = doc.data();
+        // TODO: only allow a menu to exist for one week (not multiple)
+        if (moment().isSameOrBefore(active[0], "week")) {
+          menus.push({
+            ...data,
+            active: active[0],
+            key: doc.id
+          })
+        }
+      });
+      dispatch(updateMenus(menus));
+      dispatch(setLoading(false));
+    });
+}
+
 export function appSettingsListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
   return domainData(domain).collection("appData")
-    .onSnapshot((querySnapshot) => {
+    .onSnapshot(async (querySnapshot) => {
       dispatch(setLoading(true));
       let appSettings = {};
       let data;
-      querySnapshot.forEach((doc) => {
+      for (const doc of querySnapshot.docs) {
         switch (doc.id) {
           case "cutoffTime":
           case "defaultUser":
+          case "orderOptions":
             appSettings[doc.id] = doc.data();
             break;
           case "orderSchedule":
@@ -327,16 +389,16 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
               holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day"))
             };
             break;
-          // Order options/user fields are stored as objects with the index as keys
-          case "orderOptions":
+          // User fields are stored as objects with the index as keys
           case "userFields":
             appSettings[doc.id] = Object.values(doc.data());
             break;
           default:
             break;
         }
-      });
+      }
       dispatch(updateAppSettings(appSettings));
+      dispatch(setLoading(false));
     })
 }
 

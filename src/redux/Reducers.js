@@ -19,6 +19,12 @@ const appSettings = (state = null, action) => (
     state
 );
 
+const menus = (state = null, action) => (
+  action.type === Actions.UPDATE_MENUS ?
+    action.menus :
+    state
+);
+
 const user = (state = null, action) => (
   action.type === Actions.SET_USER ?
     action.user :
@@ -43,6 +49,7 @@ const consoleApp = combineReducers({
   orders,
   users,
   appSettings,
+  menus,
   user,
   domain,
   loading,
