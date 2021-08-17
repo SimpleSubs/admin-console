@@ -34,6 +34,7 @@ export const setEmail = async (email, uid) => await executeFunction("setEmail", 
 export const resetPasswordsFunction = async (uids) => await executeFunction("resetPasswords", { uids });
 export const listAllUsers = async () => await executeFunction("listAllUsers");
 export const updateDomainData = async (id, data) => await executeFunction("updateDomainData", { id, data });
+export const importUsersFunction = async (userData) => await executeFunction("importUsers", { userData });
 
 export const firestore = firebase.firestore();
 export const auth = firebase.auth();

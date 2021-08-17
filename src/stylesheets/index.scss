@@ -2,6 +2,7 @@
 
 $accentColor: #ffd541;
 $darkAccentColor: color.adjust($accentColor, $saturation: -20%);
+$lightAccentColor: color.adjust($accentColor, $lightness: 15%);
 $backgroundColor: #fff;
 $textInputColor: #f0f0f0;
 $primaryText: #000;

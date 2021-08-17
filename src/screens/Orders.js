@@ -1,9 +1,9 @@
 import React from "react";
-import { toISO, parseISO } from "../constants/Date";
+import {toISO, parseISO, ISO_FORMAT} from "../constants/Date";
 import "../stylesheets/Orders.scss";
 import Table from "../components/Table";
 import { OrderColumns } from "../constants/TableConstants";
-import { TableTypes } from "../constants/TableActions";
+import { TableTypes, getTableValue, download } from "../constants/TableActions";
 import moment from "moment";
 import Loading from "./Loading";
 import { connect } from "react-redux";
@@ -21,8 +21,15 @@ function tableValues(order, users) {
   }
 }
 
-function joinIngredients(ingredients, orderOptions) {
-  return orderOptions.map(({ key }) => ingredients[key]).reduce((combined, current) => {
+function getDynamicOptions(date, dynamic, orderOptions, menus) {
+  return dynamic ?
+    menus.find(({ active }) => parseISO(date).isSame(active, "week")).orderOptions :
+    orderOptions;
+}
+
+function joinIngredients(ingredients, orderOptions, dynamic, date, menus) {
+  const dynamicOptions = getDynamicOptions(date, dynamic, orderOptions, menus);
+  return dynamicOptions.map(({ key }) => ingredients[key]).reduce((combined, current) => {
     if (!current) return combined;
     let combinedArr = combined;
     if (!combined) {
@@ -36,16 +43,6 @@ function joinIngredients(ingredients, orderOptions) {
         combinedArr.concat(current)
     )
   });
-}
-
-function getTableValue(data = {}, key) {
-  if (!data[key]) {
-    return "";
-  } else if (typeof data[key] === "string") {
-    return '"' + data[key] + '"';
-  } else {
-    return '"' + data[key].join(", ") + '"';
-  }
 }
 
 function getCounts(orders, orderOptions) {
@@ -68,10 +65,24 @@ function getCounts(orders, orderOptions) {
   return counts;
 }
 
-function downloadOrders(selected, orders, users, orderOptions, userFields) {
-  const orderOptionsWithoutUser = orderOptions.filter(({ key }) => key !== "user");
-  const userTitles = userFields.map(({ title }) => title);
-  const orderTitles = orderOptionsWithoutUser.map(({ title }) => title);
+function getRelevantMenus(menus, orders) {
+  const sundays = [];
+  orders.forEach(({ date }) => {
+    const sunday = parseISO(date).day(0).format(ISO_FORMAT);
+    if (!sundays.includes(sunday)) {
+      sundays.push(sunday);
+    }
+  });
+  return [
+    ...OrderColumns,
+    ...menus
+      .filter(({ active }) => sundays.includes(active))
+      .map(({ orderOptions }) => orderOptions)
+      .reduce((accumulator, currentValue) => [...accumulator, ...currentValue], [])
+  ];
+}
+
+function downloadOrders(selected, orders, users, orderOptions, userFields, dynamic, menus) {
   let ordersToDownload;
   // Download all selected orders
   if (Object.keys(selected).length > 0) {
@@ -81,6 +92,13 @@ function downloadOrders(selected, orders, users, orderOptions, userFields) {
     let now = moment();
     ordersToDownload = orders.filter(({ date }) => now.isSame(parseISO(date), "day"));
   }
+  let orderColumns = orderOptions;
+  if (dynamic) {
+    orderColumns = getRelevantMenus(menus, ordersToDownload);
+  }
+  const orderOptionsWithoutUser = orderColumns.filter(({ key }) => key !== "user");
+  const userTitles = userFields.map(({ title }) => title);
+  const orderTitles = orderOptionsWithoutUser.map(({ title }) => title);
   let rows = [[...userTitles, ...orderTitles]];
   for (let order of ordersToDownload) {
     let userData = userFields.map(({ key }) => getTableValue(users[order.uid], key));
@@ -88,23 +106,17 @@ function downloadOrders(selected, orders, users, orderOptions, userFields) {
     rows.push([...userData, ...orderData]);
   }
   rows = [...rows, ...getCounts(ordersToDownload, orderOptionsWithoutUser)];
-  let csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
-  let encodedUri = encodeURI(csvContent);
-  let link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `SandwichOrders_${toISO(moment())}.csv`);
-  document.body.appendChild(link); // Required for FF
-  link.click();
+  download(rows, `simple_subs_orders_${toISO(moment())}`);
 }
 
-const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateOrder, deleteOrders, domain }) => {
+const Orders = ({ navbarHeight, orders, orderOptions, dynamicMenus, menus, users, userFields, updateOrder, deleteOrders, domain }) => {
   const data = React.useMemo(
     () => (
-      (orders && users && orderOptions)
+      (orders && users && (orderOptions?.dynamic ? menus : orderOptions))
         ? orders.map((order) => tableValues(order, users)).filter((order) => !!order)
         : null
     ),
-    [orderOptions, orders, users]
+    [orderOptions, orders, users, menus]
   );
 
   if (!data) {
@@ -121,12 +133,14 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
         selected={selected}
         actions={(anySelected = false) => {
           let actions = [
-            { title: `Download ${anySelected ? "selected" : "today's"} orders`, action: () => downloadOrders(selected, data, users, orderOptions, userFields) },
+            {
+              title: `Download ${anySelected ? "selected" : "today's"} orders`,
+              action: () => downloadOrders(selected, data, users, orderOptions, userFields, dynamicMenus, menus) },
           ];
           if (anySelected) {
             actions.push({
               title: "Delete selected orders",
-              action: () => setCarefulSubmit(() => () => deleteSelected(selected))
+              action: () => setCarefulSubmit(() => deleteSelected(selected))
             });
           }
           return actions;
@@ -139,13 +153,13 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
     orders.map(({ user, date, uid, key, ...ingredients }) => ({
       user,
       date,
-      ingredients: joinIngredients(ingredients, orderOptions)
+      ingredients: joinIngredients(ingredients, orderOptions, dynamicMenus, date, menus)
     }))
   );
 
   const getColumnValues = () => [
     ...OrderColumns,
-    { key: "ingredients", title: "Ingredients", type: TableTypes.ARRAY, size: "LARGE" }
+    { key: "ingredients", title: "Ingredients", type: TableTypes.TEXT, size: "LARGE" }
   ];
 
   const editOrder = (index, editedOrder) => {
@@ -160,7 +174,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
     <div id={"Orders"} className={"content-container"} style={{ height: "calc(100vh - " + navbarHeight + "px)" }}>
       <Table
         data={data}
-        columns={orderOptions}
+        columns={dynamicMenus ? getRelevantMenus(menus, orders) : orderOptions}
         title={"Orders"}
         MenuButtons={MenuButtons}
         getDataValues={getDataValues}
@@ -173,12 +187,14 @@ const Orders = ({ navbarHeight, orders, orderOptions, users, userFields, updateO
   )
 };
 
-const mapStateToProps = ({ orders, appSettings, users, domain }) => ({
+const mapStateToProps = ({ orders, appSettings, menus, users, domain }) => ({
   orders,
   orderOptions: appSettings ? [
     ...OrderColumns,
-    ...(appSettings.orderOptions || [])
+    ...(appSettings.orderOptions?.orderOptions || [])
   ] : null,
+  dynamicMenus: !!appSettings?.orderOptions?.dynamic,
+  menus: menus,
   users,
   domain: domain.id,
   userFields: appSettings?.userFields

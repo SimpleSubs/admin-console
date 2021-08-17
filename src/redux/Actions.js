@@ -7,15 +7,17 @@ import {
   setEmail,
   resetPasswordsFunction,
   listAllUsers,
-  updateDomainData
+  updateDomainData,
+  importUsersFunction
 } from "../constants/Firebase";
-import { parseISO } from "../constants/Date";
+import { ISO_FORMAT, parseISO, firebaseTimeToStateTime, stateTimeToFirebaseTime } from "../constants/Date";
 import moment from "moment";
 
 const Actions = {
   UPDATE_ORDERS: "UPDATE_ORDERS",
   UPDATE_USERS: "UPDATE_USERS",
   UPDATE_APP_SETTINGS: "UPDATE_APP_SETTINGS",
+  UPDATE_MENUS: "UPDATE_MENUS",
   SET_DOMAIN: "SET_DOMAIN",
   SET_USER: "SET_USER",
   SET_LOADING: "SET_LOADING"
@@ -54,13 +56,15 @@ function updateUsers(users) {
 function updateAppSettings(appSettings) {
   return {
     type: Actions.UPDATE_APP_SETTINGS,
-    appSettings: {
-      cutoffTime: appSettings.cutoffTime || { hours: 0, minutes: 0 },
-      defaultUser: appSettings.defaultUser || {},
-      orderOptions: appSettings.orderOptions || [],
-      userFields: appSettings.userFields || []
-    }
-  }
+    appSettings
+  };
+}
+
+function updateMenus(menus) {
+  return {
+    type: Actions.UPDATE_MENUS,
+    menus
+  };
 }
 
 function setDomain(domain) {
@@ -130,7 +134,6 @@ export function deleteUsers(uidsToDelete, myUid, dispatch) {
 export function updateOrder(id, order, dispatch, domain) {
   dispatch(setLoading(true));
   let dataToPush = { ...order };
-  delete dataToPush.user;
   domainData(domain).collection("orders").doc(id)
     .set(dataToPush)
     .then(() => {
@@ -179,20 +182,43 @@ export function resetPasswords(uids, dispatch) {
   }).catch((error) => reportError(error, dispatch));
 }
 
-export function setCutoffTime(time, dispatch, domain) {
+export function setOrderOptions(data, dispatch, domain) {
   dispatch(setLoading(true));
-  domainData(domain).collection("appData").doc("cutoffTime").set(time)
+  domainData(domain).collection("appData").doc("orderOptions")
+    .update(data)
     .then(() => {
-      console.log("Successfully updated cutoff time");
+      console.log("Successfully updated order fields");
       dispatch(setLoading(false));
     }).catch((error) => reportError(error, dispatch));
 }
 
-export function setOrderOptions(newOptions, dispatch, domain) {
+export function addMenu(date, dispatch, domain) {
   dispatch(setLoading(true));
-  domainData(domain).collection("appData").doc("orderOptions").set(arrayToObject(newOptions))
+  const sunday = parseISO(date).day(0).format(ISO_FORMAT);
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu")
+    .add({ active: [sunday] })
     .then(() => {
-      console.log("Successfully updated order fields");
+      console.log("Successfully created menu");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function deleteMenu(id, dispatch, domain) {
+  dispatch(setLoading(true));
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu").doc(id)
+    .delete()
+    .then(() => {
+      console.log("Successfully deleted menu");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function editMenu(id, data, dispatch, domain) {
+  dispatch(setLoading(true));
+  domainData(domain).collection("appData").doc("orderOptions").collection("dynamicMenu").doc(id)
+    .update(data)
+    .then(() => {
+      console.log("Successfully updated menu data");
       dispatch(setLoading(false));
     }).catch((error) => reportError(error, dispatch));
 }
@@ -224,22 +250,54 @@ export function setDefaultUser(data, dispatch, domain) {
     }).catch((error) => reportError(error, dispatch));
 }
 
+export function setLunchSchedule(data, dispatch, domain) {
+  dispatch(setLoading(true));
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  domainData(domain).collection("appData").doc("lunchSchedule").set(dataToPush)
+    .then(() => {
+      console.log("Successfully updated lunch schedule data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error, dispatch));
+}
+
+export function setOrderSchedule(data, dispatch, domain) {
+  dispatch(setLoading(true));
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  domainData(domain).collection("appData").doc("orderSchedule").set(dataToPush)
+    .then(() => {
+      console.log("Successfully updated order schedule data");
+      dispatch(setLoading(false));
+    }).catch((error) => reportError(error.dispatch));
+}
+
+export async function importUsers(data, dispatch) {
+  dispatch(setLoading(true));
+  let userData = {};
+  for (let user of data) {
+    if (user.email) {
+      let thisUser = { ...user };
+      delete thisUser.email;
+      userData[user.email] = thisUser;
+    }
+  }
+  let { updated, created, errors } = await importUsersFunction(userData);
+  console.log(`Successfully updated ${Object.keys(updated).length} users`);
+  console.log(`Successfully created ${Object.keys(created).length} users`);
+  for (let error of errors) {
+    console.error(error);
+  }
+  dispatch(setLoading(false));
+}
+
 export function orderListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
   return domainData(domain).collection("orders")
+    .where("date", ">=", moment().format(ISO_FORMAT))
     .onSnapshot((querySnapshot) => {
-      let orders = [];
-      querySnapshot.forEach((doc) => {
-        let data = doc.data();
-        // Filter out all orders before today
-        if (!parseISO(data.date).isBefore(moment(), "day")) {
-          orders.push({
-            ...doc.data(),
-            key: doc.id
-          });
-        }
-      });
-      dispatch(updateOrders(orders));
+      dispatch(updateOrders(querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        key: doc.id
+      }))));
     });
 }
 
@@ -273,20 +331,74 @@ export function usersListener(dispatch, isLoggedIn, domain) {
     });
 }
 
+export function dynamicMenuListener(dispatch, dynamic, domain) {
+  if (!dynamic) {
+    // Return empty function to mimic unmounting listener (for React.useEffect)
+    return () => {};
+  }
+  return domainData(domain)
+    .collection("appData")
+    .doc("orderOptions")
+    .collection("dynamicMenu")
+    .onSnapshot((querySnapshot) => {
+      dispatch(setLoading(true));
+      const menus = [];
+      querySnapshot.forEach((doc) => {
+        const { active, ...data } = doc.data();
+        // TODO: only allow a menu to exist for one week (not multiple)
+        if (moment().isSameOrBefore(active[0], "week")) {
+          menus.push({
+            ...data,
+            active: active[0],
+            key: doc.id
+          })
+        }
+      });
+      dispatch(updateMenus(menus));
+      dispatch(setLoading(false));
+    });
+}
+
 export function appSettingsListener(dispatch, isLoggedIn, domain) {
   if (!isLoggedIn) return;
   return domainData(domain).collection("appData")
-    .onSnapshot((querySnapshot) => {
+    .onSnapshot(async (querySnapshot) => {
       dispatch(setLoading(true));
       let appSettings = {};
-      querySnapshot.forEach((doc) => {
-        if (doc.id === "cutoffTime" || doc.id === "defaultUser") {
-          appSettings[doc.id] = doc.data();
-        } else {
-          appSettings[doc.id] = Object.values(doc.data());
+      let data;
+      for (const doc of querySnapshot.docs) {
+        switch (doc.id) {
+          case "cutoffTime":
+          case "defaultUser":
+          case "orderOptions":
+            appSettings[doc.id] = doc.data();
+            break;
+          case "orderSchedule":
+            data = doc.data() || {};
+            appSettings[doc.id] = {
+              ...data,
+              defaultTime: firebaseTimeToStateTime(data.defaultTime)
+            };
+            break;
+          // Filter out holidays before today
+          case "lunchSchedule":
+            data = doc.data() || {};
+            appSettings[doc.id] = {
+              ...data,
+              defaultTime: firebaseTimeToStateTime(data.defaultTime),
+              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day"))
+            };
+            break;
+          // User fields are stored as objects with the index as keys
+          case "userFields":
+            appSettings[doc.id] = Object.values(doc.data());
+            break;
+          default:
+            break;
         }
-      });
+      }
       dispatch(updateAppSettings(appSettings));
+      dispatch(setLoading(false));
     })
 }
 

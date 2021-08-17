@@ -1,5 +1,23 @@
 {
   "projects": {
-    "default": "sandwich-orders"
+    "default": "sandwich-orders",
+    "production": "sandwich-orders",
+    "staging": "simplesubs-testing"
+  },
+  "targets": {
+    "sandwich-orders": {
+      "hosting": {
+        "production": [
+          "simple-subs"
+        ]
+      }
+    },
+    "simplesubs-testing": {
+      "hosting": {
+        "staging": [
+          "simplesubs-testing"
+        ]
+      }
+    }
   }
 }
