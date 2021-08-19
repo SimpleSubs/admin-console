@@ -1,4 +1,4 @@
-name: Deploy to Firebase staging on Merge
+name: Deploy to Firebase staging on merge into Staging
 'on':
     push:
         branches:
