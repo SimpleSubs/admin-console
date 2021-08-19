@@ -28,6 +28,15 @@ header {
   h3 {
     margin: 0;
     font-size: 24px;
+    justify-content: flex-end;
+  }
+  .picker {
+    flex: unset;
+    margin-right: 30px;
+  }
+  .domain-picker {
+    padding: 15px;
+    font-size: 1em;
   }
 }
 
