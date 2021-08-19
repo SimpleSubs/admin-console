@@ -95,6 +95,11 @@ form {
     align-items: flex-start;
     padding: 20px 0;
   }
+
+  .week-array input {
+    margin-bottom: 10px;
+  }
+
   .footer {
     flex-direction: row;
     justify-content: space-between;

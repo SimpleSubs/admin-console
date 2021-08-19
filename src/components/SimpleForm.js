@@ -147,7 +147,7 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
         <Picker
           name={fieldKey}
           id={`${id}-${fieldKey}`}
-          value={options.includes(value) ? value : (options.includes(defaultValue) ? defaultValue : "DEFAULT")}
+          value={options?.includes(value) ? value : (options?.includes(defaultValue) ? defaultValue : "DEFAULT")}
           onChange={(e) => setValue(e.target.value)}
           disabled={disabled}
         >
@@ -167,6 +167,37 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
           checked={value || defaultValue || false}
         />
       );
+    case TableTypes.WEEK_ARRAY:
+      return (
+        <div className={"week-array"}>
+          {moment.weekdays().map((day, i) => {
+            let fieldValue;
+            if (!value || !value[i]) {
+              fieldValue = defaultValue?.join(", ") || "";
+            } else if (typeof value[i] === "string") {
+              fieldValue = value[i];
+            } else {
+              fieldValue = Object.values(value[i]).join(", ");
+            }
+            return (
+              <input
+                type={"text"}
+                key={day}
+                placeholder={"Enter comma-separated values for " + day}
+                id={`${id}-${fieldKey}-${i}`}
+                name={fieldKey + "-" + i}
+                value={fieldValue}
+                onChange={(e) => {
+                  let newValue = Array.isArray(value) ? [...value] : (new Array(7)).fill("");
+                  newValue[i] = e.target.value;
+                  setValue(newValue);
+                }}
+                disabled={disabled}
+              />
+            )
+          })}
+        </div>
+      )
     default:
       return null;
   }
