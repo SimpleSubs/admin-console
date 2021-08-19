@@ -230,10 +230,15 @@ form {
 
   .extra-fields-container {
     flex-direction: row;
+    flex-wrap: wrap;
 
     .extra-field {
       margin: 20px 20px 20px 0;
     }
+  }
+
+  .dependents-list .checkbox-wrapper {
+    padding: 5px;
   }
 
   .submit-buttons {

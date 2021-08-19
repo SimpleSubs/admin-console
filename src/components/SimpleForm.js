@@ -91,7 +91,7 @@ function processState(data, fields, key, custom) {
   return processedData;
 }
 
-const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue, extraParams, prevData, editable = true, defaultValue, custom, restrictedOptions = () => [] }) => {
+const FormInput = ({ fieldKey, type, value, setValue, id, options = [], displayValue, extraParams, prevData, editable = true, defaultValue, custom, restrictedOptions = () => [] }) => {
   const disabled = !isEditable(editable, value, prevData, extraParams);
   switch (type) {
     case TableTypes.TEXT:
@@ -147,7 +147,7 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue,
         <Picker
           name={fieldKey}
           id={`${id}-${fieldKey}`}
-          value={options?.includes(value) ? value : (options?.includes(defaultValue) ? defaultValue : "DEFAULT")}
+          value={options.includes(value) ? value : (options.includes(defaultValue) ? defaultValue : "DEFAULT")}
           onChange={(e) => setValue(e.target.value)}
           disabled={disabled}
         >

@@ -252,7 +252,13 @@ export function setDefaultUser(data, dispatch, domain) {
 
 export function setLunchSchedule(data, dispatch, domain) {
   dispatch(setLoading(true));
-  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  let dataToPush = {
+    ...data,
+    defaultTime: stateTimeToFirebaseTime(data.defaultTime),
+    schedule: data.schedule.map((day) => (
+      day && day.time !== "default" ? { ...day, time: stateTimeToFirebaseTime(day.time) } : day
+    ))
+  };
   domainData(domain).collection("appData").doc("lunchSchedule").set(dataToPush)
     .then(() => {
       console.log("Successfully updated lunch schedule data");
@@ -262,7 +268,11 @@ export function setLunchSchedule(data, dispatch, domain) {
 
 export function setOrderSchedule(data, dispatch, domain) {
   dispatch(setLoading(true));
-  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
+  let dataToPush = {
+    ...data,
+    defaultTime: stateTimeToFirebaseTime(data.defaultTime),
+    schedule: data.schedule?.map((day) => day && day !== "default" ? stateTimeToFirebaseTime(day) : day)
+  };
   domainData(domain).collection("appData").doc("orderSchedule").set(dataToPush)
     .then(() => {
       console.log("Successfully updated order schedule data");
@@ -377,7 +387,8 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
             data = doc.data() || {};
             appSettings[doc.id] = {
               ...data,
-              defaultTime: firebaseTimeToStateTime(data.defaultTime)
+              defaultTime: firebaseTimeToStateTime(data.defaultTime),
+              schedule: data.schedule?.map((day) => day && day !== "default" ? firebaseTimeToStateTime(day) : day)
             };
             break;
           // Filter out holidays before today
@@ -386,7 +397,10 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
             appSettings[doc.id] = {
               ...data,
               defaultTime: firebaseTimeToStateTime(data.defaultTime),
-              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day"))
+              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day")),
+              schedule: data.schedule.map((day) => (
+                day && day.time !== "default" ? { ...day, time: firebaseTimeToStateTime(day.time) } : day
+              ))
             };
             break;
           // User fields are stored as objects with the index as keys
