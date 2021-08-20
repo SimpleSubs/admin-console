@@ -27,9 +27,9 @@ const test = require("firebase-functions-test")({
 }, "serviceAccountKey.json");
 
 const sampleUids = {
-  user: "kuItb8RrHTf8c1rMfZrFdMar4LJ2",
-  admin: "wCDqvcI0g5Y5OtRwj9y2gDfz2ku2",
-  owner: "trpm5sZZ7Ce8IrkjplhYbfPLpxq1"
+  user: "eQ1VdL3Jc8a9txx1StlSGDpowYU2",
+  admin: "4Q9COqouSWf6KtES746slFU77Gv2",
+  owner: "3kHm5vbZy7ZkrCWIQeJPL7ygAjc2"
 };
 
 const defaultUserData = { password: "defaultPassword" };
@@ -74,6 +74,7 @@ const allAreSubset = (superObj, subObj) => {
   return true;
 }
 
+// TODO: add functionality for making test users in multiple domains or adding a domain to an existing user
 const makeTestUsers = async (domain, users) => {
   let usersWithEmail = users.map((user) => ({
     ...user,
@@ -88,7 +89,7 @@ const makeTestUsers = async (domain, users) => {
     batch.set(userDataDoc(domain, data.uid), dataToPush);
   };
   const writeDomainData = (batch, data) => {
-    batch.set(userDomainDoc(data.uid), { domain });
+    batch.set(userDomainDoc(data.uid), { domains: [domain] });
   }
   await batchWrite(usersWithUids, writeUserData, firestore, console.error);
   await batchWrite(usersWithUids, writeDomainData, firestore, console.error);
@@ -109,7 +110,11 @@ const generateUserData = async (domain, userCount) => {
 const cleanUpUserAccounts = async (domain, userDomains, uidsToKeep) => {
   let allUids = (await admin.auth().listUsers()).users.map(({ uid }) => uid);
   let uidsToDelete = allUids.filter((uid) => (
-    !uidsToKeep.includes(uid) && (!userDomains[uid] || userDomains[uid].domain === domain)
+    !uidsToKeep.includes(uid) && ((!userDomains[uid])
+      || userDomains[uid].domains?.includes(domain)
+      // Extra logic to take care of possible (probable) bugs in helper functions
+      || userDomains[uid].domain === domain
+      || (Array.isArray(userDomains[uid].domain) && userDomains[uid].domain.includes(domain)))
   ));
   await admin.auth().deleteUsers(uidsToDelete);
 };
@@ -126,7 +131,11 @@ const cleanUpUserData = async (domain, uidsToKeep) => {
 
 const cleanUpUserDomains = async (domain, userDomains, uidsToKeep) => {
   let uidsToDelete = Object.keys(userDomains).filter((uid) => (
-    !uidsToKeep.includes(uid) && userDomains[uid].domain === domain
+    !uidsToKeep.includes(uid) &&
+    (userDomains[uid].domains?.includes(domain)
+    // Extra logic to take care of possible (probable) bugs in helper functions
+    || userDomains[uid].domain === domain
+    || (Array.isArray(userDomains[uid].domain) && userDomains[uid].domain.includes(domain)))
   ));
   await batchWrite(
     uidsToDelete.map((uid) => userDomainDoc(uid)),
@@ -171,24 +180,25 @@ describe("Firebase functions", function() {
   describe("checkIsAdmin", async function() {
     const wrapped = test.wrap(myFunctions.checkIsAdmin);
 
-    it("should return true when accountType is ADMIN", function() {
+    // TODO: add test for users over multiple domains
+    it("should return array with test domain when accountType is ADMIN", function() {
       let data = { email: "admin@simple-subs.com" };
-      return assert.eventually.isTrue(wrapped(data));
+      return assert.eventually.sameMembers(wrapped(data), [testDomain]);
     });
 
-    it("should return true when accountType is OWNER", function() {
+    it("should return array with test domain when accountType is OWNER", function() {
       let data = { email: "owner@simple-subs.com" };
-      return assert.eventually.isTrue(wrapped(data));
+      return assert.eventually.sameMembers(wrapped(data), [testDomain]);
     });
 
-    it("should return false when accountType is USER", function() {
+    it("should return null when accountType is USER", function() {
       let data = { email: "user@simple-subs.com" };
-      return assert.eventually.isFalse(wrapped(data));
+      return assert.eventually.isNull(wrapped(data));
     });
 
-    it("should return false when user is invalid", function() {
+    it("should return null when user is invalid", function() {
       let data = { email: "idontexist@simple-subs.com" };
-      return assert.eventually.isFalse(wrapped(data));
+      return assert.eventually.isNull(wrapped(data));
     });
   });
 
@@ -225,12 +235,12 @@ describe("Firebase functions", function() {
       });
 
       it("should throw an error if user is not an admin", function() {
-        let data = {};
+        let data = { domain: testDomain };
         let context = { auth: { uid: sampleUids.user } };
         return assert.isRejected(wrapped(data, context), "User is not an admin");
       });
       it("should throw error if UIDs are in different domain", function() {
-        let data = { uids: Object.keys(uneditableUsers) };
+        let data = { uids: Object.keys(uneditableUsers), domain: testDomain };
         let context = { auth: { uid: sampleUids.admin } };
         return assert.isRejected(wrapped(data, context), "Cannot edit users outside of domain");
       });
@@ -260,7 +270,7 @@ describe("Firebase functions", function() {
       before(async function() {
         exampleUsers = await makeTestUsers(testDomain, exampleUserData);
         uidsToDelete = Object.keys(exampleUsers).filter((user, index) => indexesToDelete.includes(index));
-        data = { uids: uidsToDelete };
+        data = { uids: uidsToDelete, domain: testDomain };
       });
 
       after(function() {
@@ -305,13 +315,13 @@ describe("Firebase functions", function() {
     });
 
     it("should throw an error if user is not an admin", function() {
-      let data = {};
+      let data = { domain: testDomain };
       let context = { auth: { uid: sampleUids.user } };
       return assert.isRejected(wrapped(data, context), "User is not an admin");
     });
 
     it("should only display users in own domain", function() {
-      let data = {}
+      let data = { domain: testDomain };
       let context = { auth: { uid: sampleUids.admin } };
       return wrapped(data, context).then((listedUsers) => {
         let uidsWithinDomain = Object.keys(usersWithinDomain);
@@ -350,7 +360,7 @@ describe("Firebase functions", function() {
     });
 
     it("should throw an error if user is not an admin", function() {
-      let data = {};
+      let data = { domain: testDomain };
       let context = { auth: { uid: sampleUids.user } };
       return assert.isRejected(wrapped(data, context), "User is not an admin");
     });
@@ -358,7 +368,7 @@ describe("Firebase functions", function() {
     it("should throw an error if user is admin trying to edit other admins", function() {
       let newEmail = "newemail0@simple-subs.com";
       let uidToChange = Object.keys(adminUser)[0];
-      let data = { uid: uidToChange, email: newEmail};
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: sampleUids.admin } };
       return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
@@ -366,7 +376,7 @@ describe("Firebase functions", function() {
     it("should throw an error if user is admin trying to edit other owners", function() {
       let newEmail = "newemail1@simple-subs.com";
       let uidToChange = Object.keys(ownerUser)[0];
-      let data = { uid: uidToChange, email: newEmail };
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: sampleUids.admin } };
       return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
@@ -374,7 +384,7 @@ describe("Firebase functions", function() {
     it("should throw an error if user is owner trying to edit other owners", function() {
       let newEmail = "newemail2@simple-subs.com";
       let uidToChange = Object.keys(ownerUser)[0];
-      let data = { uid: uidToChange, email: newEmail };
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: sampleUids.owner } };
       return assert.isRejected(wrapped(data, context), "You do not have permission to edit this user");
     });
@@ -382,7 +392,7 @@ describe("Firebase functions", function() {
     it("should only set email of specified user", function() {
       let newEmail = "newemail3@simple-subs.com";
       let uidToChange = Object.keys(users)[0];
-      let data = { uid: uidToChange, email: newEmail };
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: sampleUids.admin } };
       return assert.becomes(
         wrapped(data, context).then(async () => (await admin.auth().getUser(uidToChange)).email),
@@ -393,7 +403,7 @@ describe("Firebase functions", function() {
     it("should work as expected if user is admin editing themself", function() {
       let newEmail = "newemail4@simple-subs.com";
       let uidToChange = Object.keys(adminUser)[0];
-      let data = { uid: uidToChange, email: newEmail };
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: uidToChange } };
       return assert.becomes(
         wrapped(data, context).then(async () => (await admin.auth().getUser(uidToChange)).email),
@@ -404,7 +414,7 @@ describe("Firebase functions", function() {
     it("should work as expected if user is owner editing themself", function() {
       let newEmail = "newemail5@simple-subs.com";
       let uidToChange = Object.keys(ownerUser)[0];
-      let data = { uid: uidToChange, email: newEmail };
+      let data = { uid: uidToChange, email: newEmail, domain: testDomain };
       let context = { auth: { uid: uidToChange } };
       return assert.becomes(
         wrapped(data, context).then(async () => (await admin.auth().getUser(uidToChange)).email),
@@ -446,14 +456,14 @@ describe("Firebase functions", function() {
     });
 
     it("should throw an error if user is not an admin", function() {
-      let data = {};
+      let data = { domain: testDomain };
       let context = { auth: { uid: sampleUids.user } };
       return assert.isRejected(wrapped(data, context), "User is not an admin");
     });
 
     it("should only edit users with accountType USER if user is an admin", function() {
       let uidsToReset = [owners[0], admins[0], users[0]];
-      let data = { uids: uidsToReset };
+      let data = { uids: uidsToReset, domain: testDomain };
       let context = { auth: { uid: sampleUids.admin } };
       let expected = {
         success: [uidsToReset[2]],
@@ -468,7 +478,7 @@ describe("Firebase functions", function() {
 
     it("should only edit users with accountTypes USER or ADMIN if user is an owner", function() {
       let uidsToReset = [owners[0], admins[0], users[0]];
-      let data = { uids: uidsToReset };
+      let data = { uids: uidsToReset, domain: testDomain };
       let context = { auth: { uid: sampleUids.owner } };
       let expected = {
         success: uidsToReset.slice(1),
@@ -483,7 +493,7 @@ describe("Firebase functions", function() {
 
     it("should work if admin is resetting their own password", function() {
       let uidsToReset = [admins[2]];
-      let data = { uids: uidsToReset };
+      let data = { uids: uidsToReset, domain: testDomain };
       let context = { auth: { uid: uidsToReset[0] } };
       let expected = {
         success: uidsToReset,
@@ -498,7 +508,7 @@ describe("Firebase functions", function() {
 
     it("should work if owner is resetting their own password", function() {
       let uidsToReset = [owners[2]];
-      let data = { uids: uidsToReset };
+      let data = { uids: uidsToReset, domain: testDomain };
       let context = { auth: { uid: uidsToReset[0] } };
       let expected = {
         success: uidsToReset,
@@ -532,21 +542,21 @@ describe("Firebase functions", function() {
     });
 
     it("should throw an error if user is not logged into failed account", function() {
-      let data = { uid: failedUids[0] };
+      let data = { uid: failedUids[0], domain: testDomain };
       let context = { auth: { uid: sampleUids.user } };
       return assert.isRejected(wrapped(data, context), "You must be logged into the account to delete it.");
     });
 
     it("should throw an error if account is successfully created", function() {
       let user = successUids[0];
-      let data = { uid: user };
+      let data = { uid: user, domain: testDomain };
       let context = { auth: { uid: user } };
       return assert.isRejected(wrapped(data, context), "You cannot delete a successfully created account.");
     });
 
     it("should succeed if user is deleting their own failed account", function() {
       let user = failedUids[1];
-      let data = { uid: user };
+      let data = { uid: user, domain: testDomain };
       let context = { auth: { uid: user } };
       return wrapped(data, context).then(() => assert.isRejected(
         admin.auth().getUser(user),
@@ -582,7 +592,7 @@ describe("Firebase functions", function() {
 
     const prepareTest = async (accountType) => {
       await makeTestUsers(testDomain, EXISTING_USER_DATA);
-      let data = { userData: IMPORT_DATA };
+      let data = { userData: IMPORT_DATA, domain: testDomain };
       let context = { auth: { uid: sampleUids[accountType] } };
 
       let { updated, created } = await wrapped(data, context);
@@ -613,7 +623,7 @@ describe("Firebase functions", function() {
       });
 
       it("should throw an error if user is not an admin", function() {
-        let data = {};
+        let data = { domain: testDomain };
         let context = { auth: { uid: sampleUids.user } };
         return assert.isRejected(wrapped(data, context), "User is not an admin");
       });
@@ -624,7 +634,8 @@ describe("Firebase functions", function() {
             "invalid@simple-subs.com": {
               accountType: "ADMIN"
             }
-          }
+          },
+          domain: testDomain
         };
         let context = { auth: { uid: sampleUids.admin } };
         return assert.isRejected(wrapped(data, context), "Cannot edit users outside of domain");
@@ -636,7 +647,8 @@ describe("Firebase functions", function() {
             "owner@simple-subs.com": {
               accountType: "USER"
             }
-          }
+          },
+          domain: testDomain
         };
         let context = { auth: { uid: sampleUids.owner } };
         return wrapped(data, context).then(async () => {
