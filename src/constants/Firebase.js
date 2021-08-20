@@ -29,13 +29,12 @@ const executeFunction = async (name, data = {}) => {
 }
 
 export const checkIsAdmin = async (email) => await executeFunction("checkIsAdmin", { email });
-export const deleteUsersFunction = async (uids, domain) => await executeFunction("deleteUsers", { uids, domain });
-export const setEmail = async (email, uid, domain) => await executeFunction("setEmail", { email, uid, domain });
-export const resetPasswordsFunction = async (uids, domain) => await executeFunction("resetPasswords", { uids, domain });
-export const listAllUsers = async (domain) => await executeFunction("listAllUsers", { domain });
+export const deleteUsersFunction = async (uids) => await executeFunction("deleteUsers", { uids });
+export const setEmail = async (email, uid) => await executeFunction("setEmail", { email, uid });
+export const resetPasswordsFunction = async (uids) => await executeFunction("resetPasswords", { uids });
+export const listAllUsers = async () => await executeFunction("listAllUsers");
 export const updateDomainData = async (id, data) => await executeFunction("updateDomainData", { id, data });
-export const importUsersFunction = async (userData, domain) => await executeFunction("importUsers", { userData, domain });
-export const getAllDomainData = async () => await executeFunction("getAllDomainData");
+export const importUsersFunction = async (userData) => await executeFunction("importUsers", { userData });
 
 export const firestore = firebase.firestore();
 export const auth = firebase.auth();

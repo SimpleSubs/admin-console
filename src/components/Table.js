@@ -51,11 +51,6 @@ function prepData(row, columns) {
       case TableTypes.ARRAY:
         toDisplay = !cell || cell.length === 0 ? "none" : cell.join(", ");
         break;
-      case TableTypes.WEEK_ARRAY:
-        toDisplay = !cell || cell.length === 0 ?
-          "none" :
-          cell.filter((value) => !!value).map((subCell) => Object.values(subCell).join(", ")).join("; ");
-        break;
       case TableTypes.DATE:
         toDisplay = toReadable(cell);
         break;
