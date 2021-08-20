@@ -3,9 +3,9 @@ import moment from "moment";
 import TimeField from "./TimeField";
 import Picker from "./Picker";
 import CheckboxList from "./CheckboxList";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrashAlt, faPlusSquare } from "@fortawesome/free-regular-svg-icons";
-import { ISO_FORMAT, toStandard } from "../constants/Date";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faTrashAlt, faPlusSquare } from "@fortawesome/free-regular-svg-icons";
+// import { ISO_FORMAT, toStandard } from "../constants/Date";
 import "../stylesheets/Forms.scss";
 
 const ScheduleField = ({ formName, state = (new Array(7)).fill(null), setState, defaultTime = { hours: 7, minutes: 30, isAM: true }, useNestedTime = false, useDependent = false, userFieldOptions = [] }) => {
@@ -107,75 +107,75 @@ const ScheduleField = ({ formName, state = (new Array(7)).fill(null), setState, 
   );
 };
 
-const Holidays = ({ holidays = [], addHoliday, removeHoliday }) => {
-  const [inputState, setInputState] = React.useState("");
-  const [showError, setErrorShown] = React.useState(false);
-
-  const validateDate = (e) => {
-    e.preventDefault();
-    const dateValue = moment(inputState);
-    const isoDate = dateValue.isValid() ? dateValue.format(ISO_FORMAT) : null;
-    if (dateValue.isValid() && dateValue.isSameOrAfter(moment(), "day") && !holidays.includes(isoDate)) {
-      setErrorShown(false);
-      addHoliday(isoDate);
-      setInputState("");
-    } else {
-      setErrorShown(true);
-    }
-  }
-
-  return (
-    <div className={"holidays extra-field"}>
-      <span>Holidays</span>
-      <table className={"holiday-table"}>
-        <tbody>
-          {holidays.length > 0 && holidays.map((date) => (
-            <tr key={date}>
-              <td className={"date"}>{toStandard(date)}</td>
-              <td>
-                <button onClick={() => removeHoliday(date)}>
-                  <FontAwesomeIcon icon={faTrashAlt} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div>
-        <form className={"inputs-container"} onSubmit={validateDate}>
-          <input
-            type={"date"}
-            placeholder={"Enter a date"}
-            value={inputState}
-            onChange={(e) => setInputState(e.target.value)}
-          />
-          <button type={"submit"}>
-            <FontAwesomeIcon icon={faPlusSquare} />
-          </button>
-        </form>
-        <p className={"error " + (showError ? "shown" : "hidden")}>Please enter a unique, valid date</p>
-      </div>
-    </div>
-  );
-};
+// const Holidays = ({ holidays = [], addHoliday, removeHoliday }) => {
+//   const [inputState, setInputState] = React.useState("");
+//   const [showError, setErrorShown] = React.useState(false);
+//
+//   const validateDate = (e) => {
+//     e.preventDefault();
+//     const dateValue = moment(inputState);
+//     const isoDate = dateValue.isValid() ? dateValue.format(ISO_FORMAT) : null;
+//     if (dateValue.isValid() && dateValue.isSameOrAfter(moment(), "day") && !holidays.includes(isoDate)) {
+//       setErrorShown(false);
+//       addHoliday(isoDate);
+//       setInputState("");
+//     } else {
+//       setErrorShown(true);
+//     }
+//   }
+//
+//   return (
+//     <div className={"holidays extra-field"}>
+//       <span>Holidays</span>
+//       <table className={"holiday-table"}>
+//         <tbody>
+//           {holidays.length > 0 && holidays.map((date) => (
+//             <tr key={date}>
+//               <td className={"date"}>{toStandard(date)}</td>
+//               <td>
+//                 <button onClick={() => removeHoliday(date)}>
+//                   <FontAwesomeIcon icon={faTrashAlt} />
+//                 </button>
+//               </td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+//       <div>
+//         <form className={"inputs-container"} onSubmit={validateDate}>
+//           <input
+//             type={"date"}
+//             placeholder={"Enter a date"}
+//             value={inputState}
+//             onChange={(e) => setInputState(e.target.value)}
+//           />
+//           <button type={"submit"}>
+//             <FontAwesomeIcon icon={faPlusSquare} />
+//           </button>
+//         </form>
+//         <p className={"error " + (showError ? "shown" : "hidden")}>Please enter a unique, valid date</p>
+//       </div>
+//     </div>
+//   );
+// };
 
 export const LunchSchedule = ({ setLunchSchedule, lunchSchedule = {}, userFields = [] }) => {
   const [state, setState] = React.useState(lunchSchedule);
   const formName = "lunch-schedule";
-  const addHoliday = (date) => {
-    const newHolidays = [...(state.holidays || []), date];
-    newHolidays.sort()
-    setState({
-      ...state,
-      holidays: newHolidays
-    });
-  };
-  const removeHoliday = (date) => {
-    setState({
-      ...state,
-      holidays: (state.holidays || []).filter((holiday) => holiday !== date)
-    });
-  }
+  // const addHoliday = (date) => {
+  //   const newHolidays = [...(state.holidays || []), date];
+  //   newHolidays.sort()
+  //   setState({
+  //     ...state,
+  //     holidays: newHolidays
+  //   });
+  // };
+  // const removeHoliday = (date) => {
+  //   setState({
+  //     ...state,
+  //     holidays: (state.holidays || []).filter((holiday) => holiday !== date)
+  //   });
+  // }
 
   React.useEffect(() => setState(lunchSchedule), [lunchSchedule]);
 

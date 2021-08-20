@@ -159,7 +159,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, dynamicMenus, menus, users
 
   const getColumnValues = () => [
     ...OrderColumns,
-    { key: "ingredients", title: "Ingredients", type: TableTypes.TEXT, size: "LARGE" }
+    { key: "ingredients", title: "Ingredients", type: TableTypes.ARRAY, size: "LARGE" }
   ];
 
   const editOrder = (index, editedOrder) => {

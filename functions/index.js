@@ -162,7 +162,7 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
   let users = {};
   for (let user of listUsersResult.users) {
     let userDomain = userDomains[user.uid];
-    if (userDomain.includes(domain)) {
+    if (userDomain?.includes(domain)) {
       users[user.uid] = { email: user.email };
     }
   }
