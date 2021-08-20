@@ -1,7 +1,6 @@
 export const TableTypes = {
   TEXT: "TEXT_INPUT",
   ARRAY: "CHECKBOX",
-  WEEK_ARRAY: "WEEK_ARRAY",
   DATE: "DATE",
   PICKER: "PICKER",
   BOOLEAN: "BOOLEAN",

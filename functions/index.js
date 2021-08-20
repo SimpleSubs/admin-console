@@ -26,30 +26,14 @@ const throwError = (error) => {
   throw new functions.https.HttpsError(error.code, error.message);
 };
 
-const getAdminDomains = async (uid, myDomain = null) => {
-  const domainData = (await userDomainDoc(uid).get()).data();
-  let domains = domainData.domains || [domainData.domain];
-  if (myDomain) {
-    if (!domains.includes(myDomain)) {
-      throwError({ code: "permission-denied", message: "User is not an admin" });
-    } else {
-      domains = [myDomain];
-    }
-  }
-  const dataWhereAdmin = {};
-  await Promise.all(domains.map((domain) =>
-    userDataDoc(domain, uid).get()
-      .then((doc) => {
-        const data = doc.data();
-        if (doc.exists && data.accountType !== AccountTypes.USER) {
-          dataWhereAdmin[domain] = data.accountType;
-        }
-      }).catch(throwError)
-  ));
-  if (Object.keys(dataWhereAdmin).length === 0) {
+const isAdmin = async (uid) => {
+  let domain = (await userDomainDoc(uid).get()).data().domain;
+  let doc = await userDataDoc(domain, uid).get().catch(throwError);
+  let accountType = doc.data().accountType;
+  if (!doc.exists || !(accountType === AccountTypes.OWNER || accountType === AccountTypes.ADMIN)) {
     throwError({ code: "permission-denied", message: "User is not an admin" });
   } else {
-    return dataWhereAdmin;
+    return { domain, accountType };
   }
 }
 
@@ -57,7 +41,7 @@ const getDomains = async () => {
   let domainsSnapshot = await firestore.collection("userDomains").get();
   let domainsObj = {};
   for (let doc of domainsSnapshot.docs) {
-    domainsObj[doc.id] = doc.data().domains || [doc.data().domain] || [];
+    domainsObj[doc.id] = doc.data().domain;
   }
   return domainsObj;
 };
@@ -94,7 +78,7 @@ const getEditableUids = async (auth, accountType, uids, domain, actions) => {
     const userDomains = await getDomains();
     const accountTypes = await getAccountTypes(domain);
     for (let uid of uids) {
-      if (!userDomains[uid].includes(domain)) {
+      if (userDomains[uid] !== domain) {
         throwError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
       }
       if (isEditable(accountType, accountTypes[uid], actionsSet, auth.uid, uid)) {
@@ -108,17 +92,14 @@ const getEditableUids = async (auth, accountType, uids, domain, actions) => {
 }
 
 // Users may edit their own accounts but not delete them
-const checkAuth = async (auth, domain, uids = [], actions = []) => {
+const checkAuth = async (auth, uids = [], actions = []) => {
   if (!auth) {
     throwError({ code: "permission-denied", message: "User is not signed in" });
-  } else if (!domain) {
-    throwError({ code: "invalid-argument", message: "Provided organization key is invalid" });
   }
-  const adminDomainMap = await getAdminDomains(auth.uid, domain);
-  const accountType = adminDomainMap[domain];
+  const { domain, accountType } = await isAdmin(auth.uid);
   try {
     let editableUidsResult = await getEditableUids(auth, accountType, uids, domain, actions);
-    return { accountType, ...editableUidsResult };
+    return { domain, accountType, ...editableUidsResult };
   } catch (e) {
     throwError(e);
   }
@@ -133,15 +114,16 @@ const deleteUserData = async (uids, domain, errorIndexes) => {
 exports.checkIsAdmin = functions.https.onCall( async (data) => {
   try {
     let { uid } = await admin.auth().getUserByEmail(data.email);
-    return Object.keys(await getAdminDomains(uid));
+    await isAdmin(uid);
+    return true;
   } catch (e) {
-    return null;
+    return false;
   }
 });
 
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
-  const { domain, uids } = data;
-  const { editableUids, uneditableUids } = await checkAuth(context.auth, domain, uids, [Actions.DELETING]);
+  const uids = data.uids;
+  const { domain, editableUids, uneditableUids } = await checkAuth(context.auth, uids, [Actions.DELETING]);
   let deleteUsersResult = await admin.auth().deleteUsers(editableUids).catch(throwError);
   console.log("Successfully deleted " + deleteUsersResult.successCount + " users");
   console.log("Failed to delete " + (deleteUsersResult.failureCount + uneditableUids.length) + " users");
@@ -154,46 +136,31 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
 });
 
 exports.listAllUsers = functions.https.onCall(async (data, context) => {
-  const domain = data.domain;
-  await checkAuth(context.auth, domain);
+  const { domain } = await checkAuth(context.auth);
   // Assume that there are no more than 1000 users
   let listUsersResult = await admin.auth().listUsers(1000).catch(throwError);
   let userDomains = await getDomains();
   let users = {};
   for (let user of listUsersResult.users) {
     let userDomain = userDomains[user.uid];
-    if (userDomain?.includes(domain)) {
+    if (userDomain === domain) {
       users[user.uid] = { email: user.email };
     }
   }
   return users;
 });
 
-exports.getUser = functions.https.onCall(async (data, context) => {
-  try {
-    let { uid } = await admin.auth().getUserByEmail(data.email);
-    return uid;
-  } catch (e) {
-    if (e.code === "auth/user-not-found") {
-      return null;
-    } else {
-      throwError(e);
-    }
-  }
-})
-
 exports.setEmail = functions.https.onCall(async (data, context) => {
-  const { domain, uid, email } = data;
-  const { editableUids } = await checkAuth(context.auth, domain, [uid], [Actions.EDITING]);
+  let uid = data.uid;
+  const { editableUids } = await checkAuth(context.auth, [data.uid], [Actions.EDITING]);
   if (editableUids.length === 0) {
     throwError({ code: "permission-denied", message: "You do not have permission to edit this user" });
   }
-  await admin.auth().updateUser(uid, { email }).catch(throwError);
+  await admin.auth().updateUser(uid, { email: data.email }).catch(throwError);
 });
 
 exports.resetPasswords = functions.https.onCall(async (data, context) => {
-  const { domain, uids } = data;
-  const { editableUids, uneditableUids } = await checkAuth(context.auth, domain, uids, [Actions.EDITING]);
+  const { domain, editableUids, uneditableUids } = await checkAuth(context.auth, data.uids, [Actions.EDITING]);
   try {
     let doc = await firestore.collection("domains").doc(domain)
       .collection("appData").doc("defaultUser")
@@ -218,33 +185,28 @@ exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
   const uid = data.uid;
   if (context.auth.uid !== uid) {
     throwError({ code: "permission-denied", message: "You must be logged into the account to delete it." });
-  } else if (!data.domain) {
-    throwError({ code: "invalid-argument", message: "Provided organization key is invalid" });
   }
   try {
     const docRef = userDomainDoc(uid);
     let doc = await docRef.get();
-    let domains = doc.data()?.domains || [doc.data()?.domain] || [];
-    if (doc.exists && domains.includes(data.domain)) {
-      throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." });
-    } else if (doc.exists && domains.length > 1) {
-      await docRef.update({ domains: domains.filter((domain) => domain !== data.domain) });
-    } else {
-      if (doc.exists) {
-        await docRef.delete();
-      }
-      await admin.auth().deleteUser(uid);
+    if (doc.exists && doc.data().domain) {
+      throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." })
+    } else if (doc.exists) {
+      await docRef.delete();
     }
+    await admin.auth().deleteUser(uid);
   } catch (e) {
     throwError(e);
   }
 });
 
 exports.updateDomainData = functions.https.onCall(async (data, context) => {
-  const { id } = data;
-  await checkAuth(context.auth, id);
+  const { domain } = await checkAuth(context.auth);
+  if (domain !== data.id) {
+    throwError({ code: "permission-denied", message: "You may only edit data for your own organization." });
+  }
   try {
-    await firestore.collection("domains").doc(id).set(data.data);
+    await firestore.collection("domains").doc(data.id).set(data.data);
   } catch (e) {
     throwError(e);
   }
@@ -305,7 +267,7 @@ const getUsersByEmail = async (domain, emails) => {
   let foundArr = getUsersResult.users;
 
   for (let { uid } of foundArr) {
-    if (!userDomains[uid].includes(domain)) {
+    if (userDomains[uid] !== domain) {
       throwError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
     }
   }
@@ -398,10 +360,8 @@ const getAccountType = (admin, from = AccountTypes.USER, to = AccountTypes.USER,
   return to;
 };
 
-// TODO: Allow import existing user into a different domain
 exports.importUsers = functions.https.onCall(async (data, context) => {
-  const { domain } = data;
-  const { accountType } = await checkAuth(context.auth, domain);
+  const { domain, accountType } = await checkAuth(context.auth);
   let userData = await validateImportData(lowerKeys(data.userData), domain);
   let { found, notFound } = await getUsersByEmail(domain, Object.keys(userData));
   let { newUsers, errors } = await createUsers(notFound, domain);
@@ -467,16 +427,4 @@ exports.importUsers = functions.https.onCall(async (data, context) => {
     created: newUsers,
     errors
   };
-});
-
-exports.getAllDomainData = functions.https.onCall(async (data, context) => {
-  try {
-    const adminDomains = Object.keys(await getAdminDomains(context.auth.uid));
-    const docs = await Promise.all(adminDomains.map((domain) => domainDoc(domain).get().catch(throwError)));
-    return docs
-      .filter((doc) => doc.exists)
-      .map((doc) => ({ ...doc.data(), id: doc.id }));
-  } catch (e) {
-    throwError(e);
-  }
 });

@@ -65,7 +65,7 @@ function getCounts(orders, orderOptions) {
   return counts;
 }
 
-function getRelevantMenus(menus = [], orders) {
+function getRelevantMenus(menus, orders) {
   const sundays = [];
   orders.forEach(({ date }) => {
     const sunday = parseISO(date).day(0).format(ISO_FORMAT);
@@ -159,7 +159,7 @@ const Orders = ({ navbarHeight, orders, orderOptions, dynamicMenus, menus, users
 
   const getColumnValues = () => [
     ...OrderColumns,
-    { key: "ingredients", title: "Ingredients", type: TableTypes.ARRAY, size: "LARGE" }
+    { key: "ingredients", title: "Ingredients", type: TableTypes.TEXT, size: "LARGE" }
   ];
 
   const editOrder = (index, editedOrder) => {

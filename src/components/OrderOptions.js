@@ -2,7 +2,7 @@ import StyledButton from "./StyledButton";
 import Checkbox from "./Checkbox";
 import HamburgerButton from "./HamburgerButton";
 import Table from "./Table";
-import { OrderOptionColumns, DynamicOrderOptionColumns } from "../constants/TableConstants";
+import { OrderOptionColumns } from "../constants/TableConstants";
 import React from "react";
 import {parseISO, SIMPLE_FORMAT, toSimple} from "../constants/Date";
 import EditRowForm from "./EditRowForm";
@@ -36,33 +36,13 @@ const MenuButtons = (isTopLevel, deleteOrderOptions, deleteMenu, toggleCheckbox)
   )
 });
 
-const OrderOptionsTable = ({ id, title, orderOptions = [], setOrderOptions, isDynamic, deleteMenu, toggleCheckbox }) => {
+const OrderOptionsTable = ({ id, title, orderOptions = [], setOrderOptions, isTopLevel, deleteMenu, toggleCheckbox }) => {
   const editOrderOption = (index, editedOption) => {
-    let adjustedOption = {...editedOption};
     let newOptions = [...orderOptions];
-    if (editedOption.dynamicOptions && editedOption.type === "CHECKBOX") {
-      adjustedOption.options = adjustedOption.dynamicOptions || [];
-      delete adjustedOption.dynamicOptions;
-    } else if (editedOption.dynamicOptions) {
-      adjustedOption.dynamicOptions = adjustedOption.dynamicOptions.map((value) => {
-        if (typeof value === "string") {
-          if (value.length === 0) {
-            return null;
-          } else {
-            let newValue = {};
-            value.split(",").forEach((val, i) => newValue[i.toString()] = val.trim());
-            return newValue;
-          }
-        } else {
-          return value;
-        }
-      })
-    }
-
     if (index !== null) {
-      newOptions[index] = adjustedOption;
+      newOptions[index] = editedOption;
     } else {
-      newOptions.push(adjustedOption);
+      newOptions.push(editedOption);
     }
     setOrderOptions(newOptions);
   };
@@ -74,24 +54,14 @@ const OrderOptionsTable = ({ id, title, orderOptions = [], setOrderOptions, isDy
     setOrderOptions(newOptions);
   }
 
-  const convertToDynamicOptions = (orderOptions) => {
-    if (isDynamic) {
-      return orderOptions.map(({ options, dynamicOptions, ...orderOption }) => ({
-        ...orderOption,
-        dynamicOptions: orderOption.type === "CHECKBOX" ? options : dynamicOptions
-      }));
-    }
-    return orderOptions;
-  }
-
   return (
     <Table
       id={id}
       custom
-      data={convertToDynamicOptions(orderOptions)}
-      columns={isDynamic ? DynamicOrderOptionColumns : OrderOptionColumns}
+      data={orderOptions}
+      columns={OrderOptionColumns}
       title={title}
-      MenuButtons={MenuButtons(!isDynamic, deleteOrderOptions, deleteMenu, toggleCheckbox)}
+      MenuButtons={MenuButtons(isTopLevel, deleteOrderOptions, deleteMenu, toggleCheckbox)}
       onEdit={editOrderOption}
       pushState={(newState) => setOrderOptions(newState)}
     />
@@ -141,6 +111,7 @@ const OrderOptions = ({ orderOptions, menus = [], setOrderOptions, addMenu, dele
         id={"order-options-table"}
         orderOptions={orderOptions.orderOptions}
         setOrderOptions={(data) => setOrderOptions({ orderOptions: data })}
+        isTopLevel
         toggleCheckbox={() => setOrderOptions({ dynamic: !orderOptions.dynamic })}
       />
     );
@@ -160,7 +131,6 @@ const OrderOptions = ({ orderOptions, menus = [], setOrderOptions, addMenu, dele
             orderOptions={menu.orderOptions}
             deleteMenu={() => deleteMenu(menu.key)}
             setOrderOptions={(data) => editMenu(menu.key, { orderOptions: data })}
-            isDynamic
           />
         ))}
       </div>

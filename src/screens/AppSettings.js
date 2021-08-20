@@ -109,7 +109,6 @@ const AppSettings = ({ navbarHeight, appSettings, domain, menus, setOrderOptions
       />
       <LunchSchedule
         lunchSchedule={appSettings.lunchSchedule}
-        userFields={appSettings.userFields}
         setLunchSchedule={(data) => setLunchSchedule(data, domain.id)}
       />
       <OrderSchedule

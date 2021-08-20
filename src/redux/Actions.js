@@ -8,8 +8,7 @@ import {
   resetPasswordsFunction,
   listAllUsers,
   updateDomainData,
-  importUsersFunction,
-  getAllDomainData
+  importUsersFunction
 } from "../constants/Firebase";
 import { ISO_FORMAT, parseISO, firebaseTimeToStateTime, stateTimeToFirebaseTime } from "../constants/Date";
 import moment from "moment";
@@ -20,7 +19,6 @@ const Actions = {
   UPDATE_APP_SETTINGS: "UPDATE_APP_SETTINGS",
   UPDATE_MENUS: "UPDATE_MENUS",
   SET_DOMAIN: "SET_DOMAIN",
-  SET_DOMAIN_OPTIONS: "SET_DOMAIN_OPTIONS",
   SET_USER: "SET_USER",
   SET_LOADING: "SET_LOADING"
 };
@@ -73,45 +71,29 @@ function setDomain(domain) {
   return {
     type: Actions.SET_DOMAIN,
     domain
-  };
-}
-
-function setDomainOptions(domains) {
-  return {
-    type: Actions.SET_DOMAIN_OPTIONS,
-    domains
-  };
+  }
 }
 
 export function setLoading(loading) {
   return {
     type: Actions.SET_LOADING,
     loading
-  };
+  }
 }
 
-async function getDomainOptions(uid, dispatch) {
+async function getDomainId(uid, dispatch) {
   try {
-    const allDomainData = await getAllDomainData();
-    dispatch(setDomainOptions(allDomainData));
-    dispatch(setDomain({ id: allDomainData[0].id }));
+    let domainId = (await firestore.collection("userDomains").doc(uid).get()).data().domain;
+    dispatch(setDomain({ id: domainId }));
   } catch (error) {
     reportError(error, dispatch)
   }
 }
 
-export function changeDomain(domain, dispatch) {
-  dispatch(setDomain(domain));
-  dispatch(updateOrders(null));
-  dispatch(updateUsers(null));
-  dispatch(updateAppSettings(null));
-  dispatch(updateMenus(null));
-}
-
 export function logIn(email, password, dispatch, setError) {
   dispatch(setLoading(true));
-  checkIsAdmin(email).then((adminDomains) => {
-    if (!adminDomains || adminDomains.length === 0) {
+  checkIsAdmin(email).then((isAdmin) => {
+    if (!isAdmin) {
       dispatch(setLoading(false));
       setError("permission-denied");
       return;
@@ -119,7 +101,7 @@ export function logIn(email, password, dispatch, setError) {
     auth.signInWithEmailAndPassword(email, password)
       .then(() => {
         setError(null);
-        dispatch(setLoading(false));
+        dispatch(setLoading(false))
       })
       .catch((error) => {
         setError(error.code);
@@ -138,10 +120,10 @@ export function logOut(dispatch) {
     .catch((error) => reportError(error, dispatch));
 }
 
-export function deleteUsers(uidsToDelete, myUid, dispatch, domain) {
+export function deleteUsers(uidsToDelete, myUid, dispatch) {
   dispatch(setLoading(true));
   let uids = uidsToDelete.filter((uid) => uid !== myUid);
-  deleteUsersFunction(uids, domain).then(({ errors, uneditableUids }) => {
+  deleteUsersFunction(uids).then(({ errors, uneditableUids }) => {
     console.log(`Successfully deleted ${uids.length - errors.length - uneditableUids.length} users`);
     console.log(`User does not have access to delete ${uneditableUids.length} users`);
     console.log(`Failed to delete ${errors.length} users`);
@@ -174,7 +156,7 @@ export async function updateUser(uid, userData, prevUserData, dispatch, domain) 
   dispatch(setLoading(true));
   if (userData.email !== prevUserData.email) {
     try {
-      await setEmail(userData.email, uid, domain);
+      await setEmail(userData.email, uid);
     } catch (e) {
       reportError(e, dispatch);
     }
@@ -191,9 +173,9 @@ export async function updateUser(uid, userData, prevUserData, dispatch, domain) 
   }
 }
 
-export function resetPasswords(uids, dispatch, domain) {
+export function resetPasswords(uids, dispatch) {
   dispatch(setLoading(true));
-  resetPasswordsFunction(uids, domain).then(({ password, success, failed }) => {
+  resetPasswordsFunction(uids).then(({ password, success, failed }) => {
     console.log(`Successfully set ${success.length} passwords to '${password}'.`);
     console.log(`Failed to reset ${failed.length} passwords.`);
     dispatch(setLoading(false));
@@ -270,13 +252,7 @@ export function setDefaultUser(data, dispatch, domain) {
 
 export function setLunchSchedule(data, dispatch, domain) {
   dispatch(setLoading(true));
-  let dataToPush = {
-    ...data,
-    defaultTime: stateTimeToFirebaseTime(data.defaultTime),
-    schedule: data.schedule.map((day) => (
-      day && day.time !== "default" ? { ...day, time: stateTimeToFirebaseTime(day.time) } : day
-    ))
-  };
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
   domainData(domain).collection("appData").doc("lunchSchedule").set(dataToPush)
     .then(() => {
       console.log("Successfully updated lunch schedule data");
@@ -286,11 +262,7 @@ export function setLunchSchedule(data, dispatch, domain) {
 
 export function setOrderSchedule(data, dispatch, domain) {
   dispatch(setLoading(true));
-  let dataToPush = {
-    ...data,
-    defaultTime: stateTimeToFirebaseTime(data.defaultTime),
-    schedule: data.schedule?.map((day) => day && day !== "default" ? stateTimeToFirebaseTime(day) : day)
-  };
+  let dataToPush = { ...data, defaultTime: stateTimeToFirebaseTime(data.defaultTime) }
   domainData(domain).collection("appData").doc("orderSchedule").set(dataToPush)
     .then(() => {
       console.log("Successfully updated order schedule data");
@@ -298,7 +270,7 @@ export function setOrderSchedule(data, dispatch, domain) {
     }).catch((error) => reportError(error.dispatch));
 }
 
-export async function importUsers(data, dispatch, domain) {
+export async function importUsers(data, dispatch) {
   dispatch(setLoading(true));
   let userData = {};
   for (let user of data) {
@@ -308,7 +280,7 @@ export async function importUsers(data, dispatch, domain) {
       userData[user.email] = thisUser;
     }
   }
-  let { updated, created, errors } = await importUsersFunction(userData, domain);
+  let { updated, created, errors } = await importUsersFunction(userData);
   console.log(`Successfully updated ${Object.keys(updated).length} users`);
   console.log(`Successfully created ${Object.keys(created).length} users`);
   for (let error of errors) {
@@ -338,7 +310,7 @@ export function usersListener(dispatch, isLoggedIn, domain) {
       querySnapshot.forEach((doc) => {
         users[doc.id] = doc.data();
       });
-      listAllUsers(domain).then((result) => {
+      listAllUsers().then((result) => {
         for (let uid of Object.keys(result)) {
           if (users[uid]) {
             users[uid] = {
@@ -405,8 +377,7 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
             data = doc.data() || {};
             appSettings[doc.id] = {
               ...data,
-              defaultTime: firebaseTimeToStateTime(data.defaultTime),
-              schedule: data.schedule?.map((day) => day && day !== "default" ? firebaseTimeToStateTime(day) : day)
+              defaultTime: firebaseTimeToStateTime(data.defaultTime)
             };
             break;
           // Filter out holidays before today
@@ -415,10 +386,7 @@ export function appSettingsListener(dispatch, isLoggedIn, domain) {
             appSettings[doc.id] = {
               ...data,
               defaultTime: firebaseTimeToStateTime(data.defaultTime),
-              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day")),
-              schedule: data.schedule.map((day) => (
-                day && day.time !== "default" ? { ...day, time: firebaseTimeToStateTime(day.time) } : day
-              ))
+              holidays: (data.holidays || []).filter((date) => parseISO(date).isSameOrAfter(moment(), "day"))
             };
             break;
           // User fields are stored as objects with the index as keys
@@ -444,7 +412,7 @@ export function domainListener(dispatch, isLoggedIn, domainId) {
 export function authListener(dispatch) {
   return auth.onAuthStateChanged((user) => {
     if (user) {
-      getDomainOptions(user.uid, dispatch).then(() => dispatch(setUserData({})));
+      getDomainId(user.uid, dispatch).then(() => dispatch(setUserData({})));
     } else {
       dispatch(setUserData(null));
       setDomain(null);

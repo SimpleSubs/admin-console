@@ -91,7 +91,7 @@ function processState(data, fields, key, custom) {
   return processedData;
 }
 
-const FormInput = ({ fieldKey, type, value, setValue, id, options = [], displayValue, extraParams, prevData, editable = true, defaultValue, custom, restrictedOptions = () => [] }) => {
+const FormInput = ({ fieldKey, type, value, setValue, id, options, displayValue, extraParams, prevData, editable = true, defaultValue, custom, restrictedOptions = () => [] }) => {
   const disabled = !isEditable(editable, value, prevData, extraParams);
   switch (type) {
     case TableTypes.TEXT:
@@ -167,37 +167,6 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options = [], displayV
           checked={value || defaultValue || false}
         />
       );
-    case TableTypes.WEEK_ARRAY:
-      return (
-        <div className={"week-array"}>
-          {moment.weekdays().map((day, i) => {
-            let fieldValue;
-            if (!value || !value[i]) {
-              fieldValue = defaultValue?.join(", ") || "";
-            } else if (typeof value[i] === "string") {
-              fieldValue = value[i];
-            } else {
-              fieldValue = Object.values(value[i]).join(", ");
-            }
-            return (
-              <input
-                type={"text"}
-                key={day}
-                placeholder={"Enter comma-separated values for " + day}
-                id={`${id}-${fieldKey}-${i}`}
-                name={fieldKey + "-" + i}
-                value={fieldValue}
-                onChange={(e) => {
-                  let newValue = Array.isArray(value) ? [...value] : (new Array(7)).fill("");
-                  newValue[i] = e.target.value;
-                  setValue(newValue);
-                }}
-                disabled={disabled}
-              />
-            )
-          })}
-        </div>
-      )
     default:
       return null;
   }

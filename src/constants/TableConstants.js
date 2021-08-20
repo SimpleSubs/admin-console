@@ -15,17 +15,6 @@ function getOptionsType({ inputType }) {
     TableTypes.ARRAY;
 }
 
-function getWeekOptionsType({ inputType }) {
-  switch (inputType) {
-    case "PICKER":
-      return TableTypes.WEEK_ARRAY;
-    case "CHECKBOX":
-      return TableTypes.ARRAY;
-    default:
-      return TableTypes.HIDDEN;
-  }
-}
-
 function getTextTypeType({ inputType }) {
   return inputType === "TEXT_INPUT" ?
     TableTypes.PICKER :
@@ -82,14 +71,6 @@ export const OrderOptionColumns = [
   { key: "title", title: "Title", type: TableTypes.TEXT, required: true },
   { key: "type", title: "Input Type", type: TableTypes.PICKER, options: Object.keys(InputTypes), displayValue: (value) => InputTypes[value], required: true },
   { key: "options", title: "Options", type: TableTypes.CONDITIONAL, condition: ({ type }) => getOptionsType({ inputType: type }), size: "LARGE", required: true },
-  { key: "defaultValue", title: "Default Value(s)", type: TableTypes.CONDITIONAL, condition: getDefaultValueType, required: false },
-  { key: "required", title: "Required", type: TableTypes.BOOLEAN, required: false }
-];
-
-export const DynamicOrderOptionColumns = [
-  { key: "title", title: "Title", type: TableTypes.TEXT, required: true },
-  { key: "type", title: "Input Type", type: TableTypes.PICKER, options: Object.keys(InputTypes), displayValue: (value) => InputTypes[value], required: true },
-  { key: "dynamicOptions", title: "Options", type: TableTypes.CONDITIONAL, condition: ({ type }) => getWeekOptionsType({ inputType: type }), size: "LARGE", required: true },
   { key: "defaultValue", title: "Default Value(s)", type: TableTypes.CONDITIONAL, condition: getDefaultValueType, required: false },
   { key: "required", title: "Required", type: TableTypes.BOOLEAN, required: false }
 ];
