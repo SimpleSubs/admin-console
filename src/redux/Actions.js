@@ -454,7 +454,7 @@ export function authListener(dispatch) {
 
 export function userDataListener(dispatch, domain) {
   const uid = auth.currentUser?.uid;
-  if (!uid) return;
+  if (!uid || !domain) return;
   return domainData(domain).collection("userData").doc(uid)
     .onSnapshot((doc) => {
       dispatch(setUserData({
