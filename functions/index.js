@@ -153,14 +153,24 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
   return { errors: deleteUsersResult.errors, uneditableUids };
 });
 
+const listUsers = async (nextPageToken, users = []) => {
+  const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+  const newUsers = [...users, ...listUsersResult.users];
+  if (!listUsersResult.pageToken) {
+    return newUsers;
+  } else {
+    // List next page if there are more than 1000 users
+    return listUsers(listUsersResult.pageToken, newUsers);
+  }
+}
+
 exports.listAllUsers = functions.https.onCall(async (data, context) => {
   const domain = data.domain;
   await checkAuth(context.auth, domain);
-  // Assume that there are no more than 1000 users
-  let listUsersResult = await admin.auth().listUsers(1000).catch(throwError);
+  let listUsersResult = await listUsers().catch(throwError);
   let userDomains = await getDomains();
   let users = {};
-  for (let user of listUsersResult.users) {
+  for (let user of listUsersResult) {
     let userDomain = userDomains[user.uid];
     if (userDomain?.includes(domain)) {
       users[user.uid] = { email: user.email };
