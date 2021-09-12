@@ -12,8 +12,10 @@ import {
   orderListener,
   userDataListener,
   dynamicMenuListener,
-  usersListener
+  usersListener,
+  changeDomain
 } from "../redux/Actions";
+import Picker from "../components/Picker";
 
 const PAGES = [
   { title: "Orders", link: "orders" },
@@ -22,7 +24,7 @@ const PAGES = [
 ];
 const LOGO_SVG = require("../assets/logo.svg");
 
-const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, dynamicMenuListener, domainListener, isLoggedIn, domain, dynamicMenus }) => {
+const Home = ({ logOut, userDataListener, orderListener, usersListener, appSettingsListener, dynamicMenuListener, domainListener, isLoggedIn, domain, dynamicMenus, domainOptions, changeDomain }) => {
   const [navbarHeight, setHeight] = React.useState(0);
   const [pageIndex, setPageIndex] = React.useState(0);
   const { path, url } = useRouteMatch();
@@ -52,6 +54,9 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
           <img src={LOGO_SVG} alt={"SimpleSubs Logo"} />
           <h3>SimpleSubs Admin Console</h3>
         </div>
+        <Picker className={"domain-picker"} value={domain} onChange={(e) => changeDomain({ id: e.target.value })}>
+          {domainOptions.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+        </Picker>
         <button className={"styled-button log-out"} onClick={logOut}>
           Log out
           <i className={"fas fa-sign-out-alt"} />
@@ -87,10 +92,11 @@ const Home = ({ logOut, userDataListener, orderListener, usersListener, appSetti
   )
 };
 
-const mapStateToProps = ({ user, domain, appSettings }) => ({
+const mapStateToProps = ({ user, domain, appSettings, domainOptions }) => ({
   isLoggedIn: !!user,
   domain: domain.id,
-  dynamicMenus: !!appSettings?.orderOptions?.dynamic
+  dynamicMenus: !!appSettings?.orderOptions?.dynamic,
+  domainOptions
 });
 
 const mapDispatchToProps = (dispatch) => ({
@@ -100,7 +106,8 @@ const mapDispatchToProps = (dispatch) => ({
   usersListener: (isLoggedIn, domain) => usersListener(dispatch, isLoggedIn, domain),
   appSettingsListener: (isLoggedIn, domain) => appSettingsListener(dispatch, isLoggedIn, domain),
   dynamicMenuListener: (dynamic, domain) => dynamicMenuListener(dispatch, dynamic, domain),
-  domainListener: (isLoggedIn, domainId) => domainListener(dispatch, isLoggedIn, domainId)
+  domainListener: (isLoggedIn, domainId) => domainListener(dispatch, isLoggedIn, domainId),
+  changeDomain: (domain) => changeDomain(domain, dispatch)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(Home);

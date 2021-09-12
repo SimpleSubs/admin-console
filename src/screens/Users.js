@@ -50,10 +50,10 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
     return <Loading />
   }
   const deleteSelected = (selected) => {
-    deleteUsers(Object.keys(selected).map((index) => userData[index].uid), user.uid);
+    deleteUsers(Object.keys(selected).map((index) => userData[index].uid), user.uid, domain);
   };
   const resetSelected = (selected) => {
-    resetPasswords(Object.keys(selected).map((index) => userData[index].uid));
+    resetPasswords(Object.keys(selected).map((index) => userData[index].uid), domain);
   }
   const MenuButtons = {
     Right: ({ selected, setCarefulSubmit }) => (
@@ -99,7 +99,7 @@ const Users = ({ navbarHeight, users, userFields, user, deleteUsers, resetPasswo
         open={fileModalOpen}
         closeModal={() => setFileModal(false)}
         transformHeader={(header) => transformHeader(header, userFields)}
-        onSubmit={importUsers}
+        onSubmit={(data) => importUsers(data, domain)}
       />
       <Table
         data={userData}
@@ -123,10 +123,10 @@ const mapStateToProps = ({ users, appSettings, user, domain }) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  deleteUsers: (selected, uid) => deleteUsers(selected, uid, dispatch),
-  resetPasswords: (uids) => resetPasswords(uids, dispatch),
+  deleteUsers: (selected, uid, domain) => deleteUsers(selected, uid, dispatch, domain),
+  resetPasswords: (uids, domain) => resetPasswords(uids, dispatch, domain),
   updateUser: (uid, userData, prevData, domain) => updateUser(uid, userData, prevData, dispatch, domain),
-  importUsers: (data) => importUsers(data, dispatch)
+  importUsers: (data, domain) => importUsers(data, dispatch, domain)
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Users);
