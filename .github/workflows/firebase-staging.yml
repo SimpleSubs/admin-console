@@ -1,26 +1,26 @@
-name: Deploy to Firebase staging on merge into Staging
+name: Deploy to Firebase staging on merge into staging
 'on':
-    push:
-        branches:
-            - staging
+  push:
+    branches:
+      - staging
 jobs:
-    deploy:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v2
-            - run: yarn install --frozen-lockfile && yarn build
-            - run: |
-                  cd functions
-                  npm ci
-            - name: Enter staging environment
-              uses: w9jds/firebase-action@master
-              with:
-                  args: use staging
-              env:
-                  FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}'
-            - name: Deploy Firebase Functions and Hosting
-              uses: w9jds/firebase-action@master
-              with:
-                  args: deploy --only hosting:simplesubs-testing,functions
-              env:
-                  FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}'
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: yarn install --frozen-lockfile && yarn build
+      - run: |
+          cd functions
+          npm ci
+      - name: Enter staging environment
+        uses: w9jds/firebase-action@master
+        with:
+          args: use staging
+        env:
+          FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}'
+      - name: Deploy Firebase Functions and Hosting
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting:simplesubs-testing,functions
+        env:
+          FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}'
