@@ -20,6 +20,8 @@ const userDataDoc = (domain, uid) => userDataCollection(domain).doc(uid);
 const userDomainDoc = (uid) => firestore.collection("userDomains").doc(uid);
 const appDataCollection = (domain) => domainDoc(domain).collection("appData");
 const userFieldsDoc = (domain) => appDataCollection(domain).doc("userFields");
+const orderCountDoc = (domain) => domainDoc(domain).collection('orderCount')
+const ordersDoc = (domain) => domainDoc(domain).collection('orders')
 
 const throwError = (error) => {
   console.error(error);
@@ -168,6 +170,37 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
   }
   return users;
 });
+
+const getOrderCount = async (domain, date) => {
+  let orderCount = await orderCountDoc(domain).doc(date).get();
+  return orderCount.data()?.count || 0;
+}
+
+const incOrderCount = async (domain, date) => await orderCountDoc(domain).doc(date).set({count: admin.firestore.FieldValue.increment(1)}, {merge: true});
+const decOrderCount = async (domain, date) => await orderCountDoc(domain).doc(date).set({count: admin.firestore.FieldValue.increment(-1)}, {merge: true});
+
+exports.orderCountListener = functions.firestore.document('domains/{domain}/orders/{orderId}').onWrite((change, context) => {
+  if (!change.before.exists) incOrderCount(context.params.domain, change.after.data()?.date);
+  else if (change.before.exists && change.after.exists) null;
+  else if (!change.after.exists) decOrderCount(context.params.domain, change.before.data()?.date);
+  return true;
+});
+
+exports.createOrder = functions.https.onCall(async (data, context) => {
+  const {domain, uid, sandwich} = data;
+  if (!domain || !uid || !sandwich || !sandwich.date) return throwError({ code: "invalid-argument", message: "You did not provide the required arguments" });
+
+  await checkAuth(context.auth, domain);
+
+  const orderCount = await getOrderCount(domain, sandwich.date);
+  if (orderCount >= 125) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." }); // TODO: dynamic counts per domain 
+
+  const orderData = {...sandwich, date: sandwich.date, uid}
+  await ordersDoc(domain).doc().set(orderData);
+
+  return true;
+})
+
 
 exports.getUser = functions.https.onCall(async (data, context) => {
   try {
