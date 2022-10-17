@@ -16,6 +16,14 @@ const DomainFields = [
     editable: false,
     type: TableTypes.TEXT,
     textType: "PLAIN"
+  },
+  {
+    key: "limit",
+    title: "Sandwich Limit",
+    required: true,
+    editable: true,
+    type: TableTypes.TEXT,
+    textType: "PLAIN"
   }
 ];
 
