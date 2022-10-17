@@ -106,6 +106,18 @@ const FormInput = ({ fieldKey, type, value, setValue, id, options = [], displayV
           disabled={disabled}
         />
       );
+    case TableTypes.NUMBER:
+      return (
+        <input
+          type={"number"}
+          placeholder={"Enter a number"}
+          id={`${id}-${fieldKey}`}
+          name={fieldKey}
+          value={value || defaultValue || ""}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={disabled}
+        />
+      );
     case TableTypes.DATE:
       return (
         <input

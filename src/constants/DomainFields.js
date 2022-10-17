@@ -16,6 +16,14 @@ const DomainFields = [
     editable: false,
     type: TableTypes.TEXT,
     textType: "PLAIN"
+  },
+  {
+    key: "orderLimit",
+    title: "Order Limit",
+    required: true,
+    editable: true,
+    type: TableTypes.NUMBER,
+    textType: "NUMBER"
   }
 ];
 
