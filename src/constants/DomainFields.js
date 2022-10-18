@@ -18,12 +18,12 @@ const DomainFields = [
     textType: "PLAIN"
   },
   {
-    key: "limit",
-    title: "Sandwich Limit",
+    key: "orderLimit",
+    title: "Order Limit",
     required: true,
     editable: true,
-    type: TableTypes.TEXT,
-    textType: "PLAIN"
+    type: TableTypes.NUMBER,
+    textType: "NUMBER"
   }
 ];
 
