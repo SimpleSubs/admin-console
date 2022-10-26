@@ -198,7 +198,8 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
   await checkAuth(context.auth, domain);
 
   const orderCount = await getOrderCount(domain, sandwich.date);
-  if (orderCount >= 125) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." }); // TODO: dynamic counts per domain 
+  const orderLimit = await getOrderLimit(domain);
+  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." }); // TODO: dynamic counts per domain 
 
   const orderData = {...sandwich, date: sandwich.date, uid}
   await ordersDoc(domain).doc().set(orderData);
