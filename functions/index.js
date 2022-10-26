@@ -179,6 +179,11 @@ const getOrderCount = async (domain, date) => {
 const incOrderCount = async (domain, date) => await orderCountDoc(domain).doc(date).set({count: admin.firestore.FieldValue.increment(1)}, {merge: true});
 const decOrderCount = async (domain, date) => await orderCountDoc(domain).doc(date).set({count: admin.firestore.FieldValue.increment(-1)}, {merge: true});
 
+const getOrderLimit = async (domain) => {
+  let orderLimit = await domainDoc(domain).doc(orderLimit).get();
+  return orderLimit;
+}
+
 exports.orderCountListener = functions.firestore.document('domains/{domain}/orders/{orderId}').onWrite((change, context) => {
   if (!change.before.exists) incOrderCount(context.params.domain, change.after.data()?.date);
   else if (change.before.exists && change.after.exists) null;
