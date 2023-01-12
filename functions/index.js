@@ -180,7 +180,9 @@ const incOrderCount = async (domain, date) => await orderCountDoc(domain).doc(da
 const decOrderCount = async (domain, date) => await orderCountDoc(domain).doc(date).set({count: admin.firestore.FieldValue.increment(-1)}, {merge: true});
 
 const getOrderLimit = async (domain) => {
-  let orderLimit = await domainDoc(domain).doc(orderLimit).get();
+  const dDoc = await domainDoc(domain).get();
+  const orderLimit = dDoc.data()?.orderLimit;
+  if (!orderLimit) console.log('ORDER LIMIT MISSING');
   return orderLimit;
 }
 
@@ -199,7 +201,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
 
   const orderCount = await getOrderCount(domain, sandwich.date);
   const orderLimit = await getOrderLimit(domain);
-  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." }); // TODO: dynamic counts per domain 
+  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." });
 
   const orderData = {...sandwich, date: sandwich.date, uid}
   await ordersDoc(domain).doc().set(orderData);
