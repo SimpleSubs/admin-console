@@ -195,7 +195,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
   const {domain, uid, sandwich} = data;
   if (!domain || !uid || !sandwich || !sandwich.date) return throwError({ code: "invalid-argument", message: "You did not provide the required arguments" });
 
-  await checkAuth(context.auth, domain);
+  if (!context.auth) return throwError({ code: "permission-denied", message: "User is not signed in" });
 
   const orderCount = await getOrderCount(domain, sandwich.date);
   const orderLimit = await getOrderLimit(domain);
