@@ -10,17 +10,18 @@
     "test": "mocha --reporter spec --exit"
   },
   "engines": {
-    "node": "14"
+    "node": "18"
   },
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^8.13.0",
-    "firebase-functions": "^3.14.1"
+    "firebase-admin": "^11.10.1",
+    "firebase-functions": "^4.4.1"
   },
   "devDependencies": {
     "chai": "^4.3.0",
     "chai-as-promised": "^7.1.1",
     "firebase-functions-test": "^0.2.3",
+    "firebase-tools": "^12.4.7",
     "mocha": "^8.3.0",
     "sinon": "^9.2.4",
     "uuid": "^7.0.3"
