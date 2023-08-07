@@ -162,7 +162,7 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
   const domain = data.domain;
   await checkAuth(context.auth, domain);
   // Assume that there are no more than 1000 users
-  let listUsersResult = await admin.auth().listUsers(1500).catch((e) => {
+  let listUsersResult = await admin.auth().listUsers(1000).catch((e) => {
     throw httpsError(e)
   });
   let userDomains = await getDomains();
