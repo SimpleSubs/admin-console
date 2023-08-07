@@ -23,9 +23,8 @@ const userFieldsDoc = (domain) => appDataCollection(domain).doc("userFields");
 const orderCountDoc = (domain) => domainDoc(domain).collection('orderCount')
 const ordersDoc = (domain) => domainDoc(domain).collection('orders')
 
-const throwError = ({code, message, type}) => {
-  console.error(error);
-  throw new functions.https.HttpsError(code, message, {type: code ?? message});
+const httpsError = ({code = 'internal', message = 'An unknown error occurred.'}) => {
+  return new functions.https.HttpsError(code, message);
 };
 
 const getAdminDomains = async (uid, myDomain = null) => {
@@ -33,7 +32,7 @@ const getAdminDomains = async (uid, myDomain = null) => {
   let domains = domainData.domains || [domainData.domain];
   if (myDomain) {
     if (!domains.includes(myDomain)) {
-      throwError({ code: "permission-denied", message: "User is not an admin" });
+      throw httpsError({ code: "permission-denied", message: "User is not an admin" });
     } else {
       domains = [myDomain];
     }
@@ -46,10 +45,12 @@ const getAdminDomains = async (uid, myDomain = null) => {
         if (doc.exists && data.accountType !== AccountTypes.USER) {
           dataWhereAdmin[domain] = data.accountType;
         }
-      }).catch(throwError)
+      }).catch((e) => {
+        throw httpsError(e)
+      })
   ));
   if (Object.keys(dataWhereAdmin).length === 0) {
-    throwError({ code: "permission-denied", message: "User is not an admin" });
+    throw httpsError({ code: "permission-denied", message: "User is not an admin" });
   } else {
     return dataWhereAdmin;
   }
@@ -97,7 +98,7 @@ const getEditableUids = async (auth, accountType, uids, domain, actions) => {
     const accountTypes = await getAccountTypes(domain);
     for (let uid of uids) {
       if (!userDomains[uid].includes(domain)) {
-        throwError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
+        throw httpsError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
       }
       if (isEditable(accountType, accountTypes[uid], actionsSet, auth.uid, uid)) {
         editableUids.push(uid);
@@ -112,9 +113,9 @@ const getEditableUids = async (auth, accountType, uids, domain, actions) => {
 // Users may edit their own accounts but not delete them
 const checkAuth = async (auth, domain, uids = [], actions = []) => {
   if (!auth) {
-    throwError({ code: "permission-denied", message: "User is not signed in" });
+    throw httpsError({ code: "permission-denied", message: "User is not signed in" });
   } else if (!domain) {
-    throwError({ code: "invalid-argument", message: "Provided organization key is invalid" });
+    throw httpsError({ code: "invalid-argument", message: "Provided organization key is invalid" });
   }
   const adminDomainMap = await getAdminDomains(auth.uid, domain);
   const accountType = adminDomainMap[domain];
@@ -122,14 +123,14 @@ const checkAuth = async (auth, domain, uids = [], actions = []) => {
     let editableUidsResult = await getEditableUids(auth, accountType, uids, domain, actions);
     return { accountType, ...editableUidsResult };
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 };
 
 const deleteUserData = async (uids, domain, errorIndexes) => {
   let uidsToDelete = uids.filter((value, i) => !errorIndexes.includes(i));
   let refsToDelete = uidsToDelete.map((uid) => userDataDoc(domain, uid));
-  await batchWrite(refsToDelete, (batch, ref) => batch.delete(ref), firestore, throwError);
+  await batchWrite(refsToDelete, (batch, ref) => batch.delete(ref), firestore, httpsError);
 };
 
 exports.checkIsAdmin = functions.https.onCall( async (data) => {
@@ -144,7 +145,9 @@ exports.checkIsAdmin = functions.https.onCall( async (data) => {
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
   const { domain, uids } = data;
   const { editableUids, uneditableUids } = await checkAuth(context.auth, domain, uids, [Actions.DELETING]);
-  let deleteUsersResult = await admin.auth().deleteUsers(editableUids).catch(throwError);
+  let deleteUsersResult = await admin.auth().deleteUsers(editableUids).catch((e) => {
+    throw httpsError(e)
+  });
   console.log("Successfully deleted " + deleteUsersResult.successCount + " users");
   console.log("Failed to delete " + (deleteUsersResult.failureCount + uneditableUids.length) + " users");
   deleteUsersResult.errors.forEach((error) => {
@@ -159,7 +162,9 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
   const domain = data.domain;
   await checkAuth(context.auth, domain);
   // Assume that there are no more than 1000 users
-  let listUsersResult = await admin.auth().listUsers(1500).catch(throwError);
+  let listUsersResult = await admin.auth().listUsers(1500).catch((e) => {
+    throw httpsError(e)
+  });
   let userDomains = await getDomains();
   let users = {};
   for (let user of listUsersResult.users) {
@@ -195,13 +200,13 @@ exports.orderCountListener = functions.firestore.document('domains/{domain}/orde
 
 exports.createOrder = functions.https.onCall(async (data, context) => {
   const {domain, uid, sandwich} = data;
-  if (!domain || !uid || !sandwich || !sandwich.date) return throwError({ code: "invalid-argument", message: "You did not provide the required arguments" });
+  if (!domain || !uid || !sandwich || !sandwich.date) throw httpsError({ code: "invalid-argument", message: "You did not provide the required arguments" });
 
-  if (!context.auth) return throwError({ code: "permission-denied", message: "User is not signed in" });
+  if (!context.auth) throw httpsError({ code: "permission-denied", message: "User is not signed in" });
 
   const orderCount = await getOrderCount(domain, sandwich.date);
   const orderLimit = await getOrderLimit(domain);
-  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached.",  type: 'order-limit-reached'});
+  if (orderCount >= orderLimit) throw httpsError({ code: "unavailable", message: "The daily sandwich order limit has been reached.",  type: 'order-limit-reached'});
 
   const orderData = {...sandwich, date: sandwich.date, uid}
   await ordersDoc(domain).doc().set(orderData);
@@ -218,7 +223,7 @@ exports.getUser = functions.https.onCall(async (data, context) => {
     if (e.code === "auth/user-not-found") {
       return null;
     } else {
-      throwError(e);
+      throw httpsError(e);
     }
   }
 })
@@ -227,9 +232,11 @@ exports.setEmail = functions.https.onCall(async (data, context) => {
   const { domain, uid, email } = data;
   const { editableUids } = await checkAuth(context.auth, domain, [uid], [Actions.EDITING]);
   if (editableUids.length === 0) {
-    throwError({ code: "permission-denied", message: "You do not have permission to edit this user" });
+    throw httpsError({ code: "permission-denied", message: "You do not have permission to edit this user" });
   }
-  await admin.auth().updateUser(uid, { email }).catch(throwError);
+  await admin.auth().updateUser(uid, { email }).catch((e) => {
+    throw httpsError(e)
+  });
 });
 
 exports.resetPasswords = functions.https.onCall(async (data, context) => {
@@ -251,23 +258,23 @@ exports.resetPasswords = functions.https.onCall(async (data, context) => {
     console.log(`Failed to reset ${failed.length} passwords.`);
     return { password, success, failed };
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 });
 
 exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
   const uid = data.uid;
   if (context.auth.uid !== uid) {
-    throwError({ code: "permission-denied", message: "You must be logged into the account to delete it." });
+    throw httpsError({ code: "permission-denied", message: "You must be logged into the account to delete it." });
   } else if (!data.domain) {
-    throwError({ code: "invalid-argument", message: "Provided organization key is invalid" });
+    throw httpsError({ code: "invalid-argument", message: "Provided organization key is invalid" });
   }
   try {
     const docRef = userDomainDoc(uid);
     let doc = await docRef.get();
     let domains = doc.data()?.domains || [doc.data()?.domain] || [];
     if (doc.exists && domains.includes(data.domain)) {
-      throwError({ code: "permission-denied", message: "You cannot delete a successfully created account." });
+      throw httpsError({ code: "permission-denied", message: "You cannot delete a successfully created account." });
     } else if (doc.exists && domains.length > 1) {
       await docRef.update({ domains: domains.filter((domain) => domain !== data.domain) });
     } else {
@@ -277,7 +284,7 @@ exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
       await admin.auth().deleteUser(uid);
     }
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 });
 
@@ -287,7 +294,7 @@ exports.updateDomainData = functions.https.onCall(async (data, context) => {
   try {
     await firestore.collection("domains").doc(id).set(data.data);
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 });
 
@@ -300,7 +307,7 @@ const getUserFieldsObj = async (domain) => {
     }
     return userFieldsObj;
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 };
 
@@ -316,7 +323,7 @@ const validateImportData = async (data, domain) => {
     if (accountType) {
       accountType = accountType.toUpperCase();
       if (!accountTypeValues.includes(accountType)) {
-        throwError({
+        throw httpsError({
           code: "invalid-argument",
           message: "All specified fields for accountType must be one of 'USER', 'ADMIN', or 'OWNER'."
         });
@@ -347,7 +354,7 @@ const getUsersByEmail = async (domain, emails) => {
 
   for (let { uid } of foundArr) {
     if (!userDomains[uid].includes(domain)) {
-      throwError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
+      throw httpsError({ code: "permission-denied", message: "Cannot edit users outside of domain" });
     }
   }
 
@@ -513,11 +520,13 @@ exports.importUsers = functions.https.onCall(async (data, context) => {
 exports.getAllDomainData = functions.https.onCall(async (data, context) => {
   try {
     const adminDomains = Object.keys(await getAdminDomains(context.auth.uid));
-    const docs = await Promise.all(adminDomains.map((domain) => domainDoc(domain).get().catch(throwError)));
+    const docs = await Promise.all(adminDomains.map((domain) => domainDoc(domain).get().catch((e) => {
+      throw httpsError(e)
+    })));
     return docs
       .filter((doc) => doc.exists)
       .map((doc) => ({ ...doc.data(), id: doc.id }));
   } catch (e) {
-    throwError(e);
+    throw httpsError(e);
   }
 });

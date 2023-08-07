@@ -1,4 +1,4 @@
-exports.batchWrite = async (refs, action, firestore, throwError = console.error) => {
+exports.batchWrite = async (refs, action, firestore, httpsError = console.error) => {
   const maxWrites = 400; // write batch only allows maximum 500 writes per batch
   let batch = firestore.batch();
   let i = 0;
@@ -23,7 +23,7 @@ exports.batchWrite = async (refs, action, firestore, throwError = console.error)
     }
   } catch (e) {
     console.log("Number of operations: " + (i + rounds * maxWrites));
-    throwError(e);
+    throw httpsError(e);
   }
 }
 
