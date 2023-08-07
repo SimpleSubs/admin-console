@@ -23,9 +23,9 @@ const userFieldsDoc = (domain) => appDataCollection(domain).doc("userFields");
 const orderCountDoc = (domain) => domainDoc(domain).collection('orderCount')
 const ordersDoc = (domain) => domainDoc(domain).collection('orders')
 
-const throwError = (error) => {
+const throwError = ({code, message, type}) => {
   console.error(error);
-  throw new functions.https.HttpsError(error.code, error.message);
+  throw new functions.https.HttpsError(code, message, {type: code ?? message});
 };
 
 const getAdminDomains = async (uid, myDomain = null) => {
@@ -201,7 +201,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
 
   const orderCount = await getOrderCount(domain, sandwich.date);
   const orderLimit = await getOrderLimit(domain);
-  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached." });
+  if (orderCount >= orderLimit) return throwError({ code: "unavailable", message: "The daily sandwich order limit has been reached.",  type: 'order-limit-reached'});
 
   const orderData = {...sandwich, date: sandwich.date, uid}
   await ordersDoc(domain).doc().set(orderData);
