@@ -46,7 +46,7 @@ const getAdminDomains = async (uid, myDomain = null) => {
           dataWhereAdmin[domain] = data.accountType;
         }
       }).catch((e) => {
-        throw httpsError(e)
+        throw httpsError({code: 'internal', message: e.message});
       })
   ));
   if (Object.keys(dataWhereAdmin).length === 0) {
@@ -123,7 +123,7 @@ const checkAuth = async (auth, domain, uids = [], actions = []) => {
     let editableUidsResult = await getEditableUids(auth, accountType, uids, domain, actions);
     return { accountType, ...editableUidsResult };
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 };
 
@@ -146,7 +146,7 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
   const { domain, uids } = data;
   const { editableUids, uneditableUids } = await checkAuth(context.auth, domain, uids, [Actions.DELETING]);
   let deleteUsersResult = await admin.auth().deleteUsers(editableUids).catch((e) => {
-    throw httpsError(e)
+    throw httpsError({code: 'internal', message: e.message});
   });
   console.log("Successfully deleted " + deleteUsersResult.successCount + " users");
   console.log("Failed to delete " + (deleteUsersResult.failureCount + uneditableUids.length) + " users");
@@ -163,7 +163,7 @@ exports.listAllUsers = functions.https.onCall(async (data, context) => {
   await checkAuth(context.auth, domain);
   // Assume that there are no more than 1000 users
   let listUsersResult = await admin.auth().listUsers(1000).catch((e) => {
-    throw httpsError(e)
+    throw httpsError({code: 'internal', message: e.message});
   });
   let userDomains = await getDomains();
   let users = {};
@@ -223,7 +223,7 @@ exports.getUser = functions.https.onCall(async (data, context) => {
     if (e.code === "auth/user-not-found") {
       return null;
     } else {
-      throw httpsError(e);
+      throw httpsError({code: 'internal', message: e.message});
     }
   }
 })
@@ -235,7 +235,7 @@ exports.setEmail = functions.https.onCall(async (data, context) => {
     throw httpsError({ code: "permission-denied", message: "You do not have permission to edit this user" });
   }
   await admin.auth().updateUser(uid, { email }).catch((e) => {
-    throw httpsError(e)
+    throw httpsError({code: 'internal', message: e.message});
   });
 });
 
@@ -258,7 +258,7 @@ exports.resetPasswords = functions.https.onCall(async (data, context) => {
     console.log(`Failed to reset ${failed.length} passwords.`);
     return { password, success, failed };
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 });
 
@@ -284,7 +284,7 @@ exports.deleteFailedUser = functions.https.onCall(async (data, context) => {
       await admin.auth().deleteUser(uid);
     }
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 });
 
@@ -294,7 +294,7 @@ exports.updateDomainData = functions.https.onCall(async (data, context) => {
   try {
     await firestore.collection("domains").doc(id).set(data.data);
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 });
 
@@ -307,7 +307,7 @@ const getUserFieldsObj = async (domain) => {
     }
     return userFieldsObj;
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 };
 
@@ -521,12 +521,12 @@ exports.getAllDomainData = functions.https.onCall(async (data, context) => {
   try {
     const adminDomains = Object.keys(await getAdminDomains(context.auth.uid));
     const docs = await Promise.all(adminDomains.map((domain) => domainDoc(domain).get().catch((e) => {
-      throw httpsError(e)
+      throw httpsError({code: 'internal', message: e.message});
     })));
     return docs
       .filter((doc) => doc.exists)
       .map((doc) => ({ ...doc.data(), id: doc.id }));
   } catch (e) {
-    throw httpsError(e);
+    throw httpsError({code: 'internal', message: e.message});
   }
 });
