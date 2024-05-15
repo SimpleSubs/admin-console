@@ -13,13 +13,13 @@ jobs:
           cd functions
           npm ci
       - name: Enter staging environment
-        uses: w9jds/firebase-action@master
+        uses: w9jds/firebase-action@v13.4.0
         with:
           args: use production
         env:
           FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}'
       - name: Deploy Firebase Functions and Hosting
-        uses: w9jds/firebase-action@master
+        uses: w9jds/firebase-action@v13.4.0
         with:
           args: deploy --only hosting:sandwich-orders,functions
         env:
