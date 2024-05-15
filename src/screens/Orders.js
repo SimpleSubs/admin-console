@@ -1,4 +1,10 @@
 import React from "react";
+import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
+import PizZipUtils from "pizzip/utils/index.js";
+import expressionParser from 'docxtemplater/expressions.js';
+import { saveAs } from "file-saver";
+
 import {toISO, parseISO, ISO_FORMAT} from "../constants/Date";
 import "../stylesheets/Orders.scss";
 import Table from "../components/Table";
@@ -9,6 +15,10 @@ import Loading from "./Loading";
 import { connect } from "react-redux";
 import { deleteOrders, updateOrder } from "../redux/Actions";
 import HamburgerButton from "../components/HamburgerButton";
+
+function loadTemplateFile(url, callback) {
+  PizZipUtils.getBinaryContent(url, callback);
+}
 
 function tableValues(order, users) {
   if (users[order.uid]) {
@@ -82,6 +92,73 @@ function getRelevantMenus(menus = [], orders) {
   ];
 }
 
+function handleItemRowFormat(obj) {
+  for (const key in obj) {
+    if (obj[key] === '') {
+      obj[key] = 'none';
+    }
+  }
+  return obj;
+}
+
+function normalizeFieldTitle(field) {
+  return field.replace(/ *\([^)]*\) */g, "").trim().replace(/ /g, "_");
+}
+
+function downloadLabels(selected, orders, users, orderOptions, userFields, dynamic, menus) {
+  let ordersToDownload;
+  // Download all selected orders
+  if (Object.keys(selected).length > 0) {
+    ordersToDownload = orders.filter((order, i) => selected[i]);
+  // Download today's orders if nothing is selected
+  } else {
+    let now = moment();
+    ordersToDownload = orders.filter(({ date }) => now.isSame(parseISO(date), "day"));
+  }
+  let orderColumns = orderOptions;
+  if (dynamic) {
+    orderColumns = getRelevantMenus(menus, ordersToDownload);
+  }
+  const orderFields = [...userFields, ...orderColumns]
+  const ordersToPrint = []
+
+  for (const order of ordersToDownload) {
+    const orderData = {};
+    for (const field of orderFields) {
+      const val = getTableValue(order, field.key, false) || getTableValue(users[order.uid], field.key, false);
+      orderData[normalizeFieldTitle(field.title)] = val;
+      orderData[field.key] = val; // Add for keys if the name is expected to change
+    }
+    ordersToPrint.push(orderData);
+  }
+
+  console.log(ordersToPrint)
+  loadTemplateFile("/label_template.docx", function (error, content) {
+    if (error) {
+      throw error;
+    }
+
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      parser: expressionParser,
+    });
+
+    doc.render({
+      orders: ordersToPrint.map((order) => handleItemRowFormat(order)),
+    });
+
+    const out = doc.getZip().generate({
+      type: "blob",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }); // Output the document using Data-URI
+
+    saveAs(out, "output.docx");
+  });
+}
+
 function downloadOrders(selected, orders, users, orderOptions, userFields, dynamic, menus) {
   let ordersToDownload;
   // Download all selected orders
@@ -134,8 +211,13 @@ const Orders = ({ navbarHeight, orders, orderOptions, dynamicMenus, menus, users
         actions={(anySelected = false) => {
           let actions = [
             {
-              title: `Download ${anySelected ? "selected" : "today's"} orders`,
-              action: () => downloadOrders(selected, data, users, orderOptions, userFields, dynamicMenus, menus) },
+              title: `Download ${anySelected ? "selected" : "today's"} labels`,
+              action: () => downloadLabels(selected, data, users, orderOptions, userFields, dynamicMenus, menus)
+            },
+            {
+              title: `Download ${anySelected ? "selected" : "today's"} orders spreadsheet`,
+              action: () => downloadOrders(selected, data, users, orderOptions, userFields, dynamicMenus, menus)
+            }
           ];
           if (anySelected) {
             actions.push({

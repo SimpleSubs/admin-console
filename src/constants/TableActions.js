@@ -25,13 +25,13 @@ export default function getHeaderValues({ key, title, type = TableTypes.TEXT, si
   }
 }
 
-export function getTableValue(data = {}, key) {
+export function getTableValue(data = {}, key, addQuotes = true) {
   if (!data[key]) {
     return "";
   } else if (typeof data[key] === "string") {
-    return '"' + data[key] + '"';
+    return addQuotes ? '"' + data[key] + '"' : data[key];
   } else {
-    return '"' + data[key].join(", ") + '"';
+    return addQuotes ? '"' + data[key].join(", ") + '"' : data[key].join(", ");
   }
 }
 
