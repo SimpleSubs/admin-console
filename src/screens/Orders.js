@@ -95,7 +95,7 @@ function getRelevantMenus(menus = [], orders) {
 function handleItemRowFormat(obj) {
   for (const key in obj) {
     if (obj[key] === '') {
-      obj[key] = 'none';
+      obj[key] = ''; // Future space for a placeholder. Right now the template checks for an empty string to remove newlines.
     }
   }
   return obj;
@@ -155,7 +155,7 @@ function downloadLabels(selected, orders, users, orderOptions, userFields, dynam
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }); // Output the document using Data-URI
 
-    saveAs(out, "output.docx");
+    saveAs(out, `simple_subs_labels_${toISO(moment())}.docx`);
   });
 }
 
