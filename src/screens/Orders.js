@@ -120,7 +120,7 @@ function downloadLabels(selected, orders, users, orderOptions, userFields, dynam
     orderColumns = getRelevantMenus(menus, ordersToDownload);
   }
   const orderFields = [...userFields, ...orderColumns]
-  const ordersToPrint = []
+  let ordersToPrint = []
 
   for (const order of ordersToDownload) {
     const orderData = {};
@@ -132,7 +132,16 @@ function downloadLabels(selected, orders, users, orderOptions, userFields, dynam
     ordersToPrint.push(orderData);
   }
 
-  console.log(ordersToPrint)
+  const groupedGrades = ordersToPrint.reduce((acc, order) => {
+    acc[order.Grade] = [...(acc[order.Grade] || []), order];
+    return acc;
+  }, {});
+
+  ordersToPrint = Object.values(groupedGrades).flat();
+
+  console.log(groupedGrades);
+  console.log(ordersToPrint);
+  
   loadTemplateFile("/label_template.docx", function (error, content) {
     if (error) {
       throw error;
