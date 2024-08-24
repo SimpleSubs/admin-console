@@ -300,6 +300,8 @@ export function setOrderSchedule(data, dispatch, domain) {
 
 export async function importUsers(data, dispatch, domain) {
   dispatch(setLoading(true));
+
+  // Turns an array of user objects into an object with email as key
   let userData = {};
   for (let user of data) {
     if (user.email) {
@@ -308,6 +310,7 @@ export async function importUsers(data, dispatch, domain) {
       userData[user.email] = thisUser;
     }
   }
+
   let { updated, created, errors } = await importUsersFunction(userData, domain);
   console.log(`Successfully updated ${Object.keys(updated).length} users`);
   console.log(`Successfully created ${Object.keys(created).length} users`);

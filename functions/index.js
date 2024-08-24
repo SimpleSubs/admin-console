@@ -476,8 +476,8 @@ exports.importUsers = functions.https.onCall(async (data, context) => {
 
   // Write user domain data (only need to use notFound since domain data is already written for found)
   await batchWrite(
-    Object.keys(notFound),
-    (batch, email) => batch.set(userDomainDoc(allUsers[email]), { domain }),
+    notFound.map(email => userDomainDoc(allUsers[email])),
+    (batch, ref) => batch.set(ref, { domain }),
     firestore,
     (error) => errors.push(error)
   );
